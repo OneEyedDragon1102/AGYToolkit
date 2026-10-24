@@ -11,8 +11,8 @@ from agy_toolkit.agents import (
 
 
 class TestAgentRegistry(unittest.TestCase):
-    def test_core_agents_exist(self):
-        core_agents = [
+    def test_all_15_specialist_agents_exist(self):
+        expected_15 = [
             "orchestrator",
             "planner-architect",
             "spring-boot-engineer",
@@ -23,21 +23,17 @@ class TestAgentRegistry(unittest.TestCase):
             "code-reviewer",
             "anti-bloat-sentinel",
             "git-craftsman",
+            "adb-device-master",
+            "quant-market-analyst",
+            "docs-librarian",
+            "context-budget-guard",
+            "dependency-curator",
         ]
-        available_names = [a["name"] for a in list_agents()]
-        for name in core_agents:
+        available_agents = list_agents()
+        available_names = [a["name"] for a in available_agents]
+        self.assertEqual(len(available_agents), 15)
+        for name in expected_15:
             self.assertIn(name, available_names)
-
-    def test_reviewers_are_read_only(self):
-        code_rev = load_agent("code-reviewer")
-        sec_audit = load_agent("security-auditor")
-        self.assertFalse(code_rev["enableWriteTools"])
-        self.assertFalse(sec_audit["enableWriteTools"])
-
-    def test_tdd_specialist_contract(self):
-        tdd = load_agent("tdd-specialist")
-        self.assertIn("Red Before Green", tdd["systemPrompt"])
-        self.assertIn("Mandatory 80% Coverage", tdd["systemPrompt"])
 
     def test_load_orchestrator_markdown(self):
         agent = load_agent("orchestrator")
@@ -57,6 +53,18 @@ class TestAgentRegistry(unittest.TestCase):
         self.assertEqual(agent["recommendedWorkspace"], "branch")
         self.assertIn("hexagonal architecture", agent["systemPrompt"])
         self.assertIn("Definition of Done", agent["systemPrompt"])
+
+    def test_read_only_agents(self):
+        for name in ["code-reviewer", "security-auditor", "context-budget-guard"]:
+            agent = load_agent(name)
+            self.assertFalse(agent["enableWriteTools"], f"{name} should be read-only")
+
+    def test_domain_agents_contracts(self):
+        adb = load_agent("adb-device-master")
+        self.assertIn("Normalized Coordinates", adb["systemPrompt"])
+
+        quant = load_agent("quant-market-analyst")
+        self.assertIn("Mandatory Risk Circuit-Breakers", quant["systemPrompt"])
 
     def test_parse_frontmatter(self):
         content = """---
