@@ -1,0 +1,41 @@
+{
+  "branch-guard": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "command": "powershell -ExecutionPolicy Bypass -File ./hooks/enforce-branch-rule.ps1",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "anti-bloat-sentinel": {
+    "PreToolUse": [
+      {
+        "matcher": "write_file|edit_file",
+        "hooks": [
+          {
+            "command": "powershell -ExecutionPolicy Bypass -File ./hooks/anti-bloat-check.ps1",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "plan-approval-gate": {
+    "PreToolUse": [
+      {
+        "matcher": "write_file|edit_file",
+        "hooks": [
+          {
+            "command": "powershell -ExecutionPolicy Bypass -File ./hooks/plan-approval-gate.ps1",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
