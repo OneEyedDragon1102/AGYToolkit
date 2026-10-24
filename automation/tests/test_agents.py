@@ -18,10 +18,26 @@ class TestAgentRegistry(unittest.TestCase):
             "spring-boot-engineer",
             "node-ts-engineer",
             "python-automation-lead",
+            "tdd-specialist",
+            "security-auditor",
+            "code-reviewer",
+            "anti-bloat-sentinel",
+            "git-craftsman",
         ]
         available_names = [a["name"] for a in list_agents()]
         for name in core_agents:
             self.assertIn(name, available_names)
+
+    def test_reviewers_are_read_only(self):
+        code_rev = load_agent("code-reviewer")
+        sec_audit = load_agent("security-auditor")
+        self.assertFalse(code_rev["enableWriteTools"])
+        self.assertFalse(sec_audit["enableWriteTools"])
+
+    def test_tdd_specialist_contract(self):
+        tdd = load_agent("tdd-specialist")
+        self.assertIn("Red Before Green", tdd["systemPrompt"])
+        self.assertIn("Mandatory 80% Coverage", tdd["systemPrompt"])
 
     def test_load_orchestrator_markdown(self):
         agent = load_agent("orchestrator")
