@@ -4,7 +4,14 @@ import io
 import unittest
 from contextlib import redirect_stdout
 
-from agy_toolkit.cli import TOOL_CATALOG, print_catalog, print_agents, main
+from agy_toolkit.cli import (
+    TOOL_CATALOG,
+    SKILL_TRACKS,
+    print_catalog,
+    print_agents,
+    print_skills,
+    main,
+)
 
 
 class TestCLI(unittest.TestCase):
@@ -42,9 +49,19 @@ class TestCLI(unittest.TestCase):
         with redirect_stdout(f):
             print_agents()
         out = f.getvalue()
-        self.assertIn("[AGYToolkit] Governed Specialist Subagents (15 Matrix)", out)
+        self.assertIn("[AGYToolkit] Governed Specialist Subagents (15 Universal Matrix)", out)
         self.assertIn("orchestrator", out)
-        self.assertIn("spring-boot-engineer", out)
+        self.assertIn("frontend-ui-engineer", out)
+        self.assertIn("database-architect", out)
+
+    def test_print_skills_executes(self):
+        f = io.StringIO()
+        with redirect_stdout(f):
+            print_skills()
+        out = f.getvalue()
+        self.assertIn("[AGYToolkit] Progressive SDLC Skills Catalog (28 Skills across 5 Tracks)", out)
+        self.assertIn("adr-architect", out)
+        self.assertIn("skill-author", out)
 
     def test_main_with_list_tools(self):
         f = io.StringIO()
@@ -58,7 +75,14 @@ class TestCLI(unittest.TestCase):
         with redirect_stdout(f):
             main(["--list-agents"])
         out = f.getvalue()
-        self.assertIn("[AGYToolkit] Governed Specialist Subagents (15 Matrix)", out)
+        self.assertIn("[AGYToolkit] Governed Specialist Subagents (15 Universal Matrix)", out)
+
+    def test_main_with_list_skills(self):
+        f = io.StringIO()
+        with redirect_stdout(f):
+            main(["--list-skills"])
+        out = f.getvalue()
+        self.assertIn("[AGYToolkit] Progressive SDLC Skills Catalog (28 Skills across 5 Tracks)", out)
 
 
 if __name__ == "__main__":

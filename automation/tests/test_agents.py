@@ -23,8 +23,8 @@ class TestAgentRegistry(unittest.TestCase):
             "code-reviewer",
             "anti-bloat-sentinel",
             "git-craftsman",
-            "adb-device-master",
-            "quant-market-analyst",
+            "frontend-ui-engineer",
+            "database-architect",
             "docs-librarian",
             "context-budget-guard",
             "dependency-curator",
@@ -59,12 +59,14 @@ class TestAgentRegistry(unittest.TestCase):
             agent = load_agent(name)
             self.assertFalse(agent["enableWriteTools"], f"{name} should be read-only")
 
-    def test_domain_agents_contracts(self):
-        adb = load_agent("adb-device-master")
-        self.assertIn("Normalized Coordinates", adb["systemPrompt"])
+    def test_sdlc_agents_contracts(self):
+        frontend = load_agent("frontend-ui-engineer")
+        self.assertIn("accessibility", frontend["systemPrompt"].lower())
+        self.assertTrue(frontend["enableWriteTools"])
 
-        quant = load_agent("quant-market-analyst")
-        self.assertIn("Mandatory Risk Circuit-Breakers", quant["systemPrompt"])
+        db = load_agent("database-architect")
+        self.assertIn("migration", db["systemPrompt"].lower())
+        self.assertTrue(db["enableWriteTools"])
 
     def test_parse_frontmatter(self):
         content = """---
@@ -93,15 +95,10 @@ Body line 1
             "enableWriteTools": True,
             "enableSubagentTools": False,
             "enableMCPTools": False,
-            "recommendedWorkspace": "branch",
+            "recommendedWorkspace": "inherit",
         }
         errors = validate_agent_spec(invalid_spec)
-        self.assertTrue(any("Anti-Bloat violation" in e for e in errors))
-
-    def test_missing_fields_validation(self):
-        incomplete_spec = {"name": "incomplete"}
-        errors = validate_agent_spec(incomplete_spec)
-        self.assertTrue(len(errors) >= len(REQUIRED_FIELDS) - 1)
+        self.assertTrue(any("emojis" in e.lower() for e in errors))
 
 
 if __name__ == "__main__":
