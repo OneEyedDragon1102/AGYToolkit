@@ -1,0 +1,33 @@
+# AGYToolkit Project Rules & Guidelines
+
+Welcome to **{{PROJECT_NAME}}**, governed by the AGYToolkit Sovereign Multi-Agent AI Development Framework.
+
+## Primary Tech Stack: {{STACK}}
+
+## Mandatory Development Workflow Rules
+
+Every contributor and agent working in this repository MUST strictly follow these rules:
+
+1. **Atomic Commits (No Large Chunks)**:
+   - Commits must be small, focused, and bite-sized. Never bundle multiple unrelated features or wholesale rewrites into a single commit.
+
+2. **Mandatory Isolated Verification & Testing**:
+   - Every change must be verified, tested, and reviewed in an isolated environment before staging.
+   - All tests in the test suite must pass cleanly with 80%+ test coverage.
+
+3. **Feature Branching & Commit Conventions**:
+   - All work must be conducted on branches named `feature/<feature-name>` branched from the latest `main`.
+   - Never commit directly to `main`.
+   - Commit messages must be minimal and adhere to Conventional Commits: `<type>(<scope>): <short summary>`.
+
+4. **Staging & Final User Review Gate**:
+   - Only stage (`git add`) the exact diffs that have been verified, reviewed, and tested.
+   - Leave unstaged anything unverified or in-progress.
+   - Present staged diffs clearly to the user for final review and approval before committing.
+
+## Anti-Bloat Sentinel Rules (Zero AI Clutter)
+
+1. **Zero Emojis in Code**: No emojis in source code files, logs, or comments.
+2. **No Monolithic Single-File Dumps**: Code must be modularized into cohesive packages (max 600 lines per file).
+3. **No Conversational Comments**: Comments must be concise technical documentation only.
+4. **Plan-Approval Gate**: No code changes without an explicit, approved implementation plan.
