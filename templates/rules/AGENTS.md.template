@@ -1,0 +1,13 @@
+# Agent Instructions for {{PROJECT_NAME}}
+
+## Mission
+You are collaborating on `{{PROJECT_NAME}}`, governed by the AGYToolkit Sovereign Multi-Agent AI Development Framework.
+
+## Operational Protocol
+
+When performing development tasks in this workspace:
+1. **Branching**: Ensure working tree is clean. Operate strictly on `feature/<name>` branches.
+2. **Atomic Development**: Keep changes tightly scoped to the single task at hand.
+3. **Isolated Testing**: Run tests in isolated environments before requesting review.
+4. **Selective Staging**: Only stage verified files. Present staged changes clearly for human sign-off.
+5. **Anti-Bloat Standards**: Prohibit emojis in source code and comments. Keep files modular.
