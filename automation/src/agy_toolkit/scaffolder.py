@@ -87,5 +87,6 @@ def scaffold_project(
         "mode": mode,
         "agents_installed": len(list((dst_agents / "agents").glob("*.md"))),
         "hooks_installed": len(list((dst_agents / "hooks").glob("*.*"))),
+        "skills_installed": len(list((dst_agents / "skills").glob("*/SKILL.md"))),
         "memory_initialized": (dst_agents / "memory" / "active-session.md").exists(),
     }

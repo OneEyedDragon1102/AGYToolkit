@@ -8,6 +8,8 @@ from typing import List
 from agy_toolkit.agents import list_agents
 from agy_toolkit.scaffolder import scaffold_project
 
+TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templates"
+
 TOOL_CATALOG = {
     "File System": ["read_file", "write_file", "edit_file"],
     "Process & Tasks": ["run_command", "manage_task"],
@@ -21,6 +23,47 @@ TOOL_CATALOG = {
         "send_message",
     ],
     "Customizations": ["skills", "rules", "hooks", "plugins", "mcp_servers"],
+}
+
+SKILL_TRACKS = {
+    "Track A: Planning & Architecture": [
+        ("adr-architect", "Documents architecture decision records with trade-off matrices"),
+        ("plan-approval-gate", "Enforces plan-approval gate before code modifications"),
+        ("task-decomposer", "Decomposes complex user epics into atomic tasks"),
+        ("context-budgeter", "Manages token budgets and offloads volatile data"),
+        ("telemetry-logger", "Structures execution logs and cross-agent handoffs"),
+        ("handbook-enforcer", "Enforces repository guidelines and coding rules"),
+    ],
+    "Track B: TDD & Implementation": [
+        ("tdd-spring-boot", "Red-Green-Refactor TDD for Java 23 / Spring Boot"),
+        ("tdd-node-ts", "Red-Green-Refactor TDD for Node.js / TypeScript"),
+        ("tdd-python", "Isolated Python 3.12 TDD in virtual environments"),
+        ("spring-service-generator", "Generates Hexagonal Architecture Spring Boot services"),
+        ("node-mcp-builder", "Builds MCP servers and tools using TypeScript SDK"),
+        ("ui-component-builder", "Builds accessible, responsive UI components"),
+        ("refactor-cleaner", "Structural refactoring and modularization (<600 lines)"),
+    ],
+    "Track C: Review & Quality Gates": [
+        ("code-reviewer", "Production-grade code review on git diffs"),
+        ("anti-bloat-linter", "Scans for emojis, chatter, and monolithic files"),
+        ("security-scanner", "Audits for credentials, OWASP vulnerabilities, and CVEs"),
+        ("coverage-verifier", "Enforces mandatory 80%+ test coverage threshold"),
+        ("concurrency-auditor", "Audits multi-threaded code and race conditions"),
+        ("api-contract-checker", "Validates API schemas and DTO compatibility"),
+    ],
+    "Track D: Git, Staging & CI/CD": [
+        ("commit-craft", "Drafts atomic Conventional Commits"),
+        ("branch-manager", "Governs feature branch workflows and isolation"),
+        ("selective-stager", "Granular staging and sign-off verification"),
+        ("release-packager", "SemVer calculation, changelog generation, and packaging"),
+        ("ci-pipeline-validator", "Validates CI/CD workflow configurations"),
+    ],
+    "Track E: Meta-Framework & Extensibility": [
+        ("agy-inspector", "Audits AGY tools, skills, rules, and MCP servers"),
+        ("skill-author", "Authors project-specific domain skills on demand"),
+        ("agent-author", "Authors project-specific specialist subagents on demand"),
+        ("workspace-doctor", "Diagnoses workspace dependencies and build toolchains"),
+    ],
 }
 
 
@@ -38,7 +81,7 @@ def print_catalog():
 def print_agents():
     agents = list_agents()
     print("=" * 70)
-    print(" [AGYToolkit] Governed Specialist Subagents (15 Matrix)")
+    print(" [AGYToolkit] Governed Specialist Subagents (15 Universal Matrix)")
     print("=" * 70)
     for a in agents:
         name = a.get("name", "unknown")
@@ -49,6 +92,18 @@ def print_agents():
         print(f"   Role: {role}")
         print(f"   Desc: {a.get('description', '')}")
     print("\n" + "=" * 70)
+
+
+def print_skills():
+    total_skills = sum(len(skills) for skills in SKILL_TRACKS.values())
+    print("=" * 75)
+    print(f" [AGYToolkit] Progressive SDLC Skills Catalog ({total_skills} Skills across 5 Tracks)")
+    print("=" * 75)
+    for track, skills in SKILL_TRACKS.items():
+        print(f"\n* {track} ({len(skills)} skills):")
+        for name, desc in skills:
+            print(f"   - {name:<26} : {desc}")
+    print("\n" + "=" * 75)
 
 
 def handle_init(args):
@@ -72,6 +127,7 @@ def handle_init(args):
 
     print(f"\n Success! Workspace provisioned with:")
     print(f"   - {res['agents_installed']} specialist subagents in .agents/agents/")
+    print(f"   - {res['skills_installed']} progressive SDLC skills in .agents/skills/")
     print(f"   - {res['hooks_installed']} lifecycle hook scripts in .agents/hooks/")
     print(f"   - Active session memory initialized (gitignored)")
     print(f"   - GEMINI.md and AGENTS.md project rules generated")
@@ -112,11 +168,18 @@ def main(argv: List[str] = None):
         action="store_true",
         help="List all 15 governed specialist subagents in AGYToolkit",
     )
+    parser.add_argument(
+        "--list-skills",
+        action="store_true",
+        help="List all 28 progressive SDLC skills in AGYToolkit",
+    )
 
     args = parser.parse_args(argv)
 
     if args.command == "init":
         handle_init(args)
+    elif args.list_skills:
+        print_skills()
     elif args.list_agents:
         print_agents()
     elif args.list_tools:

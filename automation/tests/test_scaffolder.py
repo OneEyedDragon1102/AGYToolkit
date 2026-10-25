@@ -29,12 +29,18 @@ class TestScaffolder(unittest.TestCase):
         self.assertEqual(res["project_name"], "clash-of-clans-bot")
         self.assertEqual(res["mode"], "spike")
         self.assertEqual(res["agents_installed"], 15)
+        self.assertEqual(res["skills_installed"], 28)
         self.assertTrue(res["memory_initialized"])
 
         # Verify filesystem
         agents_dir = self.target / ".agents" / "agents"
         self.assertTrue((agents_dir / "orchestrator.md").exists())
-        self.assertTrue((agents_dir / "adb-device-master.md").exists())
+        self.assertTrue((agents_dir / "frontend-ui-engineer.md").exists())
+        self.assertTrue((agents_dir / "database-architect.md").exists())
+
+        skills_dir = self.target / ".agents" / "skills"
+        self.assertTrue((skills_dir / "adr-architect" / "SKILL.md").exists())
+        self.assertTrue((skills_dir / "skill-author" / "SKILL.md").exists())
 
         # Verify active session customized
         active_sess = (self.target / ".agents" / "memory" / "active-session.md").read_text(encoding="utf-8")
@@ -59,6 +65,7 @@ class TestScaffolder(unittest.TestCase):
         out = f.getvalue()
         self.assertIn("Initializing Governance for: market-trader", out)
         self.assertIn("Success! Workspace provisioned", out)
+        self.assertIn("28 progressive SDLC skills in .agents/skills/", out)
         self.assertTrue((self.target / "GEMINI.md").exists())
 
 
