@@ -9,7 +9,23 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-AGENTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "agents"
+TEMPLATES_AGENTS_DIR = (
+    Path(__file__).resolve().parent.parent.parent.parent / "templates" / ".agents" / "agents"
+)
+LEGACY_AGENTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "agents"
+WORKSPACE_AGENTS_DIR = Path.cwd() / ".agents" / "agents"
+
+
+def get_default_agents_dir() -> Path:
+    """Resolve default agents directory in priority order: templates -> workspace -> legacy."""
+    if TEMPLATES_AGENTS_DIR.exists():
+        return TEMPLATES_AGENTS_DIR
+    if WORKSPACE_AGENTS_DIR.exists():
+        return WORKSPACE_AGENTS_DIR
+    return LEGACY_AGENTS_DIR
+
+
+AGENTS_DIR = get_default_agents_dir()
 
 REQUIRED_FIELDS = [
     "name",
@@ -51,22 +67,21 @@ def parse_frontmatter(content: str) -> Tuple[Dict, str]:
             else:
                 metadata[key] = val
 
-    body = "\n".join(lines[body_start_idx:]).strip() if body_start_idx != -1 else ""
+    body = "\n".join(lines[body_start_idx:]) if body_start_idx != -1 else ""
     return metadata, body
 
 
 def validate_agent_spec(spec: Dict) -> List[str]:
-    """Validate an agent specification dictionary against AGY requirements."""
+    """Validate an agent specification dictionary against governance rules."""
     errors = []
 
     for field in REQUIRED_FIELDS:
         if field not in spec:
             errors.append(f"Missing required field: '{field}'")
 
-    if "name" in spec:
-        name = spec["name"]
-        if not re.match(r"^[a-z0-9-]+$", str(name)):
-            errors.append(f"Invalid name '{name}': must be lowercase hyphenated")
+    for bool_field in ["enableWriteTools", "enableSubagentTools", "enableMCPTools"]:
+        if bool_field in spec and not isinstance(spec[bool_field], bool):
+            errors.append(f"Field '{bool_field}' must be a boolean, got {type(spec[bool_field]).__name__}")
 
     if "recommendedWorkspace" in spec:
         ws = spec["recommendedWorkspace"]
@@ -83,7 +98,7 @@ def validate_agent_spec(spec: Dict) -> List[str]:
 
 def load_agent(agent_name: str, agents_dir: Optional[Path] = None) -> Dict:
     """Load and validate an agent definition by name (.md or .json)."""
-    target_dir = agents_dir or AGENTS_DIR
+    target_dir = agents_dir or get_default_agents_dir()
 
     md_path = target_dir / f"{agent_name}.md"
     json_path = target_dir / f"{agent_name}.json"
@@ -109,7 +124,7 @@ def load_agent(agent_name: str, agents_dir: Optional[Path] = None) -> Dict:
 
 def list_agents(agents_dir: Optional[Path] = None) -> List[Dict]:
     """List all available specialist agents in the agents directory."""
-    target_dir = agents_dir or AGENTS_DIR
+    target_dir = agents_dir or get_default_agents_dir()
     if not target_dir.exists():
         return []
 

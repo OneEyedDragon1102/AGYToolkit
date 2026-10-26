@@ -24,6 +24,8 @@ bin/
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+.eggs/
 .Python
 env/
 venv/

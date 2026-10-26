@@ -1,39 +1,39 @@
-# 🛠️ AGYToolkit
+# AGYToolkit
 
 > **The Sovereign Multi-Agent AI Development Framework & SDLC Operating System for Google Antigravity (AGY).**
 
-`AGYToolkit` is an enterprise-grade multi-agent governance and development framework (inspired by *AllStackDeveloper*). It is designed to govern, scaffold, test, and drive the autonomous delivery of software projects across independent repositories (Trading Bots, Mobile/Gaming Automators, Productivity Agents, and SaaS MVPs).
+`AGYToolkit` is an enterprise-grade multi-agent governance and development framework. It provides deterministic lifecycle hooks, strict quality gates, a universal 15-specialist agent matrix, 28 progressive SDLC skills, and a budget-governed memory system to empower autonomous agent swarms in delivering production-grade software across any repository.
 
 ---
 
-## 🏛️ Framework Architecture
+## Framework Architecture
 
 ```mermaid
 flowchart TD
     subgraph Mind [The Orchestrator: AGY Runtime]
         Agent[Antigravity Primary Agent]
-        Skills[31 Progressive Skills Library]
-        Hooks[15 Lifecycle Hooks: PowerShell + Bash]
+        Skills[28 Progressive SDLC Skills Library]
+        Hooks[Lifecycle Hooks: PowerShell + Bash]
         Swarm[15 Governed Specialist Subagents]
     end
 
     subgraph FrameworkCore [AGYToolkit Engine]
         CLI[AGYToolkit CLI: Scaffolder & Auditor]
         Gates[Strict Quality Gates: TDD, 80% Coverage, Anti-Bloat]
-        Memory[Persistent Session Memory & Knowledge Graph]
+        Memory[Budget-Governed Dual-Tier Memory System]
     end
 
     subgraph TechStacks [Supported Primary Stacks]
-        JavaStack[Java 23 & Spring Boot: Enterprise Backends & Trading]
-        NodeStack[Node.js / TypeScript: MCP Servers, Puppeteer, Mobile Bridges]
-        PyStack[Python 3.12: Test Harnesses, Automation & Computer Vision]
+        JavaStack[Java 23 & Spring Boot: Hexagonal Architecture, Enterprise APIs]
+        NodeStack[Node.js / TypeScript: MCP Servers, Puppeteer Sidecars, Web]
+        PyStack[Python 3.12: Test Suites, Automation & Diagnostics]
     end
 
     subgraph TargetRepos [Downstream Managed Projects]
-        R1[Mobile ADB / Clash of Clans Bot Repo]
-        R2[Spring Boot Market Trader Repo]
-        R3[Email & Resume Automation Repo]
-        R4[Rapid Venture / SaaS Generator Repo]
+        R1[Enterprise Backend Microservices]
+        R2[Fullstack Web & SaaS Applications]
+        R3[Autonomous Trading & Data Pipelines]
+        R4[Automation & RPA Sidecars]
     end
 
     Mind --> FrameworkCore
@@ -43,61 +43,106 @@ flowchart TD
 
 ---
 
-## ⚡ Core Governance Pillars
+## Core Governance Pillars
 
-1. **15 Governed Specialist Agents**:
-   - `orchestrator`, `planner-architect`, `spring-boot-engineer`, `node-ts-engineer`, `python-automation-lead`, `tdd-specialist`, `security-auditor`, `code-reviewer`, `anti-bloat-sentinel`, `adb-device-master`, `quant-market-analyst`, `docs-librarian`, `git-craftsman`, `context-budget-guard`, `dependency-curator`.
-2. **31 Progressive Skills**:
-   - Categorized into Planning & Architecture, Test-Driven Development, Quality & Anti-Bloat, Git & Workflow, and Domain Automation Engines.
-3. **15 Cross-Platform Lifecycle Hooks (`hooks.json`)**:
-   - Automated runtime gates executed before and after tool calls (e.g. `PreToolUse`, `PostToolUse`, `SessionStart`).
-   - Hard blocks on direct commits to `main`, unapproved code generation, and test failures.
+1. **15 Universal Specialist Subagents**:
+   - `orchestrator`, `planner-architect`, `spring-boot-engineer`, `node-ts-engineer`, `python-automation-lead`, `frontend-ui-engineer`, `database-architect`, `tdd-specialist`, `security-auditor`, `code-reviewer`, `anti-bloat-sentinel`, `git-craftsman`, `docs-librarian`, `context-budget-guard`, `dependency-curator`.
+   - Each agent operates under the Single Responsibility Principle with strict handoff contracts, workspace isolation modes (`inherit`, `branch`, `share`), and explicit Definitions of Done.
+
+2. **28 Progressive SDLC Skills**:
+   - Loaded on demand to conserve prompt tokens. Organized into 5 engineering tracks: Planning & Architecture, TDD & Implementation, Review & Quality Gates, Git & CI/CD, and Meta-Framework Extensibility (including on-demand domain skill/agent authoring).
+
+3. **Lifecycle Hooks (`hooks.json`)**:
+   - Automated runtime gates executed before and after tool calls (`PreToolUse`, `PostToolUse`, `SessionStart`).
+   - Hard blocks on direct commits to `main`, unapproved file modifications, and failing test runs.
+
 4. **Anti-Bloat Sentinel**:
-   - Eliminates typical AI-generated noise: zero emojis in production code, no oversized conversational comments, and strict prohibition of monolithic single-file dumps.
-5. **Universal Project Initializer**:
-   - `agy-toolkit init` command to bootstrap any downstream repository with full governance, skills, and lifecycle hooks in seconds.
+   - Zero emojis in production code, comments, or log strings.
+   - Elimination of conversational AI chatter in source comments.
+   - Strict prohibition of monolithic single-file dumps (>600 line limit).
+
+5. **Budget-Governed Memory Engine**:
+   - `active-session.md`: 1 KB hard budget for working context (gitignored).
+   - `decisions.md`: 3 KB hard budget for committed architectural decisions.
+   - `volatile-bus/`: Ephemeral dump zone for raw logs >20 lines (gitignored).
+   - Guarantees seamless `/compact` operations with zero context loss.
+
+6. **Universal Project Initializer**:
+   - `agy-toolkit init` command to bootstrap any downstream repository with complete governance, agent specifications, skills, and lifecycle hooks in seconds.
 
 ---
 
-## 📁 Repository Structure
+## Quickstart & CLI Usage
 
-```text
-AGYToolkit/
-├── .agents/
-│   ├── rules/                   # Contextual rules (code style, anti-bloat, security)
-│   ├── skills/                  # The 31 Progressive Skills library
-│   └── hooks.json               # AGY lifecycle event hook definitions
-├── hooks/                       # Cross-platform lifecycle hook scripts (PS1 + Bash)
-│   ├── plan-approval-gate.ps1
-│   ├── enforce-branch-rule.ps1
-│   ├── anti-bloat-check.ps1
-│   └── ...
-├── agents/                      # 15 Specialist Subagent definitions & prompts
-│   ├── orchestrator.md
-│   ├── planner-architect.md
-│   └── ...
-├── templates/                   # Scaffolding templates for downstream repositories
-│   ├── spring-boot/             # Enterprise Spring Boot template
-│   ├── node-ts/                 # Node.js MCP / TypeScript template
-│   └── python-automation/       # Python CV / automation template
-├── automation/                  # Test harnesses, CLI utility & diagnostics
-│   ├── src/agy_toolkit/         # Framework CLI & core logic
-│   └── tests/                   # Automated hook & agent test suites
-├── AGENTS.md                    # Core operational agent instructions
-├── GEMINI.md                    # Mandatory development rules & governance
-└── README.md                    # Framework manual (this file)
+### Installation
+```bash
+git clone https://github.com/OneEyedDragon1102/AGYToolkit.git
+cd AGYToolkit
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1  # or source .venv/bin/activate on Linux/macOS
+pip install -e .
+```
+
+### CLI Commands
+```bash
+# List all 28 progressive SDLC skills across 5 tracks
+agy-toolkit --list-skills
+
+# List all 15 universal specialist subagents
+agy-toolkit --list-agents
+
+# List supported tool categories
+agy-toolkit --list-tools
+
+# Scaffold governance into a target project
+agy-toolkit init ../my-service --name my-service --stack spring-boot --mode feature
 ```
 
 ---
 
-## 🔄 The Weekend-Weekday Development Rhythm
+## Repository Structure
 
-| Cadence | Role | Autonomous Operations |
-| :--- | :--- | :--- |
-| **Weekend Forge** (Heavy Dev) | Full SDLC velocity with subagents, architectural planning, TDD implementation, and security auditing. |
-| **Weekday Machine** (Profit & Autonomy) | Headless running of downstream projects: automated trading, mobile game farming, email triage, and lead generation. |
+```text
+AGYToolkit/
+├── pyproject.toml               # Python package manifest & CLI script entrypoint
+├── README.md                    # Framework manual (this file)
+├── AGENTS.md                    # Operational protocols for AGY agents
+├── GEMINI.md                    # Core project rules & coding standards
+│
+├── templates/                   # Distributable blueprints deployed to downstream repos
+│   ├── .agents/
+│   │   ├── agents/              # 15 Universal Specialist Subagents (Markdown specs)
+│   │   ├── hooks/               # Lifecycle hook scripts (PS1 + Bash)
+│   │   ├── hooks.json           # Active AGY event hook triggers
+│   │   ├── skills/              # 28 Progressive SDLC Skills
+│   │   └── memory/              # Memory templates (active-session, decisions, volatile-bus)
+│   └── rules/
+│       ├── GEMINI.md.template   # Injected project rules
+│       └── AGENTS.md.template   # Injected agent instructions
+│
+├── automation/                  # Framework CLI, core engines & verification
+│   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, agents)
+│   └── tests/                   # 34 automated unit & verification tests
+│
+└── docs/                        # Complete technical framework documentation
+    ├── getting_started.md       # Onboarding, installation, and usage guide
+    ├── specialist_agents.md     # In-depth reference for all 15 agents
+    ├── skills_catalog.md        # Comprehensive catalog of all 28 skills
+    ├── memory_system.md         # Architecture of the dual-tier memory engine
+    └── core_tools.md            # AGY tool definitions and parameter reference
+```
 
 ---
 
-## 📄 License
+## Documentation Reference
+
+- [Getting Started Guide](docs/getting_started.md)
+- [Specialist Agents Reference](docs/specialist_agents.md)
+- [Progressive Skills Catalog](docs/skills_catalog.md)
+- [Memory System Architecture](docs/memory_system.md)
+- [Core Tool Catalog](docs/core_tools.md)
+
+---
+
+## License
 MIT
