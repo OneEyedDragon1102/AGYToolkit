@@ -10,6 +10,7 @@ from agy_toolkit.bus import (
 )
 from agy_toolkit.doctor import run_doctor, DoctorReport
 from agy_toolkit.linker import link_global
+from agy_toolkit.mcp_server import McpServer
 from agy_toolkit.memory import (
     check_memory_budgets,
     flush_active_session,
@@ -28,6 +29,7 @@ __all__ = [
     "run_doctor",
     "DoctorReport",
     "link_global",
+    "McpServer",
     "check_memory_budgets",
     "flush_active_session",
     "record_decision",
