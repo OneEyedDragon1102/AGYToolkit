@@ -31,6 +31,39 @@ def get_active_session(memory_dir: Optional[Path] = None) -> str:
         return f.read()
 
 
+def flush_active_session(
+    archive: bool = True,
+    memory_dir: Optional[Path] = None,
+) -> Optional[Path]:
+    """Flush working session memory, optionally archiving previous state."""
+    target_dir = ensure_memory_dirs(memory_dir)
+    active_path = target_dir / "active-session.md"
+    archive_path = None
+
+    if active_path.exists() and archive:
+        content = active_path.read_text(encoding="utf-8").strip()
+        if content:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            archive_path = target_dir / "sessions" / f"{timestamp}_session.md"
+            archive_path.write_text(content + "\n", encoding="utf-8")
+
+    clean_template = """# Active Session State
+
+- **Active Goal**: None
+- **Current Branch**: `main`
+- **Active Agent**: `orchestrator`
+- **Immediate Next Step**: Awaiting instructions
+
+## Modified Files
+- None
+
+## Open Blockers
+- None
+"""
+    active_path.write_text(clean_template, encoding="utf-8")
+    return archive_path
+
+
 def update_active_session(
     goal: str,
     branch: str,

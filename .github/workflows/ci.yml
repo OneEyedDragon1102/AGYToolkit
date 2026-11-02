@@ -1,0 +1,58 @@
+name: AGYToolkit CI & Governance Gate
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-and-govern:
+    name: Test & Governance Gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.12']
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install -e .
+
+      - name: Run Test Suite with Coverage
+        run: |
+          pytest automation/tests --cov=agy_toolkit --cov-report=term-missing --cov-fail-under=80
+
+      - name: Run AGYToolkit Doctor Diagnostic
+        run: |
+          agy-toolkit doctor
+
+      - name: Anti-Bloat Code Hygiene Verification
+        shell: bash
+        run: |
+          echo "Scanning python source files for monolithic file bloat (>600 lines)..."
+          oversized=$(find automation/src -type f -name "*.py" -exec wc -l {} + | awk '$1 > 600 {print $2}')
+          if [ -n "$oversized" ]; then
+            echo "Error: Monolithic file detected exceeding 600 lines:"
+            echo "$oversized"
+            exit 1
+          fi
+          echo "Anti-bloat size audit passed."
