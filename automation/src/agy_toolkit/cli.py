@@ -1,11 +1,14 @@
 """AGYToolkit CLI - Command line utility for AGY ecosystem inspection, management, and project scaffolding."""
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import List
 
 from agy_toolkit.agents import list_agents
+from agy_toolkit.doctor import run_doctor, print_doctor_report
+from agy_toolkit.linker import link_global
 from agy_toolkit.scaffolder import scaffold_project
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templates"
@@ -135,6 +138,45 @@ def handle_init(args):
     print("=" * 60)
 
 
+def handle_doctor(args):
+    target = Path(args.path or ".").resolve()
+    report = run_doctor(target_path=target)
+
+    if getattr(args, "json", False):
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        print_doctor_report(report)
+
+    if not report.is_healthy:
+        sys.exit(1)
+
+
+def handle_link_global(args):
+    mode = args.mode or "copy"
+    dry_run = getattr(args, "dry_run", False)
+
+    prefix = "[DRY-RUN] " if dry_run else ""
+    print("=" * 65)
+    print(f" {prefix}[AGYToolkit] Mounting Global Capabilities to ~/.gemini/config/")
+    print(f" Mode: {mode}")
+    print("=" * 65)
+
+    stats = link_global(mode=mode, dry_run=dry_run)
+
+    print(f"\n Results:")
+    print(f"   - Destination: {stats['config_dir']}")
+    print(f"   - Skills mounted: {stats['skills_linked']}/28")
+    print(f"   - Agents mounted: {stats['agents_linked']}/15")
+    if stats["errors"]:
+        print(f"   - Errors encountered: {len(stats['errors'])}")
+        for err in stats["errors"]:
+            print(f"     ! {err}")
+    else:
+        action = "would be discoverable" if dry_run else "are now discoverable"
+        print(f"\n Success! All AGYToolkit capabilities {action} machine-wide in AGY.")
+    print("=" * 65)
+
+
 def main(argv: List[str] = None):
     # Ensure safe encoding for Windows command line output when running standalone
     if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
@@ -157,6 +199,16 @@ def main(argv: List[str] = None):
     init_parser.add_argument("--stack", choices=["spring-boot", "node-ts", "python"], default="node-ts", help="Primary tech stack")
     init_parser.add_argument("--mode", choices=["feature", "spike", "quickfix"], default="feature", help="Operational mode")
 
+    # doctor subcommand
+    doctor_parser = subparsers.add_parser("doctor", help="Run diagnostic health and governance audit")
+    doctor_parser.add_argument("path", nargs="?", default=".", help="Target workspace path (default: current dir)")
+    doctor_parser.add_argument("--json", action="store_true", help="Output doctor findings as JSON")
+
+    # link-global subcommand
+    link_parser = subparsers.add_parser("link-global", help="Mount skills and agents to ~/.gemini/config/ for global discovery")
+    link_parser.add_argument("--mode", choices=["copy", "symlink"], default="copy", help="Mount method (default: copy)")
+    link_parser.add_argument("--dry-run", action="store_true", help="Simulate mounting without writing")
+
     # flags on root
     parser.add_argument(
         "--list-tools",
@@ -178,6 +230,10 @@ def main(argv: List[str] = None):
 
     if args.command == "init":
         handle_init(args)
+    elif args.command == "doctor":
+        handle_doctor(args)
+    elif args.command == "link-global":
+        handle_link_global(args)
     elif args.list_skills:
         print_skills()
     elif args.list_agents:
