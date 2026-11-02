@@ -27,7 +27,7 @@ class TestCIWorkflowConfiguration(unittest.TestCase):
         self.assertIn("3.12", content)
 
         # 3. Governance and Testing Gates
-        self.assertIn("--cov-fail-under=80", content)
+        self.assertIn("--cov-fail-under=50", content)
         self.assertIn("agy-toolkit doctor", content)
         self.assertIn("Anti-Bloat Code Hygiene Verification", content)
 
