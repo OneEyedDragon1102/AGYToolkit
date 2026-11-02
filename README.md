@@ -21,6 +21,7 @@ flowchart TD
         CLI[AGYToolkit CLI: Scaffolder & Auditor]
         Gates[Strict Quality Gates: TDD, 80% Coverage, Anti-Bloat]
         Memory[Budget-Governed Dual-Tier Memory System]
+        Bus[Volatile IPC Multi-Agent Event Bus]
     end
 
     subgraph TechStacks [Supported Primary Stacks]
@@ -61,14 +62,15 @@ flowchart TD
    - Elimination of conversational AI chatter in source comments.
    - Strict prohibition of monolithic single-file dumps (>600 line limit).
 
-5. **Budget-Governed Memory Engine**:
+5. **Budget-Governed Memory Engine & Event Bus**:
    - `active-session.md`: 1 KB hard budget for working context (gitignored).
    - `decisions.md`: 3 KB hard budget for committed architectural decisions.
-   - `volatile-bus/`: Ephemeral dump zone for raw logs >20 lines (gitignored).
+   - `volatile-bus/`: Ephemeral dump zone and inter-agent IPC message bus (gitignored).
    - Guarantees seamless `/compact` operations with zero context loss.
 
-6. **Universal Project Initializer**:
-   - `agy-toolkit init` command to bootstrap any downstream repository with complete governance, agent specifications, skills, and lifecycle hooks in seconds.
+6. **Universal Project Initializer & Health Diagnostics**:
+   - `agy-toolkit init`: Bootstrap any downstream repository with complete governance in seconds.
+   - `agy-toolkit doctor`: Deep environment and workspace compliance auditor.
 
 ---
 
@@ -85,6 +87,24 @@ pip install -e .
 
 ### CLI Commands
 ```bash
+# Run environment & governance health audit
+agy-toolkit doctor
+
+# Mount all 28 skills and 15 agents machine-wide into ~/.gemini/config/
+agy-toolkit link-global
+
+# Scaffold governance into a target project
+agy-toolkit init ../my-service --name my-service --stack spring-boot --mode feature
+
+# Check active session and decisions memory budgets
+agy-toolkit memory status
+
+# Flush active session and archive to sessions/
+agy-toolkit memory flush
+
+# Publish inter-agent event to volatile bus
+agy-toolkit bus send --topic review --sender code-reviewer --recipient orchestrator --payload '{"status": "PASS"}'
+
 # List all 28 progressive SDLC skills across 5 tracks
 agy-toolkit --list-skills
 
@@ -93,9 +113,6 @@ agy-toolkit --list-agents
 
 # List supported tool categories
 agy-toolkit --list-tools
-
-# Scaffold governance into a target project
-agy-toolkit init ../my-service --name my-service --stack spring-boot --mode feature
 ```
 
 ---
@@ -121,14 +138,14 @@ AGYToolkit/
 │       └── AGENTS.md.template   # Injected agent instructions
 │
 ├── automation/                  # Framework CLI, core engines & verification
-│   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, agents)
-│   └── tests/                   # 34 automated unit & verification tests
+│   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, bus, doctor, linker)
+│   └── tests/                   # 59 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide
     ├── specialist_agents.md     # In-depth reference for all 15 agents
     ├── skills_catalog.md        # Comprehensive catalog of all 28 skills
-    ├── memory_system.md         # Architecture of the dual-tier memory engine
+    ├── memory_system.md         # Architecture of the dual-tier memory engine & event bus
     └── core_tools.md            # AGY tool definitions and parameter reference
 ```
 

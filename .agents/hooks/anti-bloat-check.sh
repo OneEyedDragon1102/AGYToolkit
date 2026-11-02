@@ -8,7 +8,8 @@ if [ -z "$input_json" ]; then
     exit 0
 fi
 
-python3 -c "
+PY_BIN=$(command -v python3 || command -v python)
+$PY_BIN -c "
 import sys, json, os, re
 
 try:

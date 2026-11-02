@@ -7,8 +7,20 @@ from pathlib import Path
 from typing import List
 
 from agy_toolkit.agents import list_agents
+from agy_toolkit.bus import (
+    publish_event,
+    read_event,
+    list_events,
+    consume_events,
+    clear_bus,
+)
 from agy_toolkit.doctor import run_doctor, print_doctor_report
 from agy_toolkit.linker import link_global
+from agy_toolkit.memory import (
+    check_memory_budgets,
+    flush_active_session,
+    record_decision,
+)
 from agy_toolkit.scaffolder import scaffold_project
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templates"
@@ -138,6 +150,7 @@ def handle_init(args):
     print("=" * 60)
 
 
+
 def handle_doctor(args):
     target = Path(args.path or ".").resolve()
     report = run_doctor(target_path=target)
@@ -147,7 +160,9 @@ def handle_doctor(args):
     else:
         print_doctor_report(report)
 
-    if not report.is_healthy:
+    if getattr(args, "strict", False) and (report.warnings > 0 or report.failures > 0):
+        sys.exit(1)
+    elif not report.is_healthy:
         sys.exit(1)
 
 
@@ -163,7 +178,7 @@ def handle_link_global(args):
 
     stats = link_global(mode=mode, dry_run=dry_run)
 
-    print(f"\n Results:")
+    print("\n Results:")
     print(f"   - Destination: {stats['config_dir']}")
     print(f"   - Skills mounted: {stats['skills_linked']}/28")
     print(f"   - Agents mounted: {stats['agents_linked']}/15")
@@ -175,6 +190,104 @@ def handle_link_global(args):
         action = "would be discoverable" if dry_run else "are now discoverable"
         print(f"\n Success! All AGYToolkit capabilities {action} machine-wide in AGY.")
     print("=" * 65)
+
+
+def handle_memory(args):
+    action = args.memory_action
+    target_dir = Path(args.path or ".").resolve() / ".agents" / "memory"
+
+    if action == "status":
+        budgets = check_memory_budgets(memory_dir=target_dir)
+        if getattr(args, "json", False):
+            print(json.dumps(budgets, indent=2))
+        else:
+            print("=" * 60)
+            print(" [AGYToolkit Memory Engine] Context Budget & Health")
+            print("=" * 60)
+            for key, data in budgets.items():
+                name = "Active Session" if key == "active_session" else "Decisions Register"
+                status = "[PASS]" if data["within_budget"] else "[FAIL]"
+                pct = (data["bytes"] / data["cap"]) * 100 if data["cap"] else 0
+                print(f"  {status} {name:20}: {data['bytes']} / {data['cap']} bytes ({pct:.1f}%)")
+            print("=" * 60)
+
+    elif action == "flush":
+        archive = not getattr(args, "no_archive", False)
+        archive_path = flush_active_session(archive=archive, memory_dir=target_dir)
+        if archive_path:
+            print(f"[AGYToolkit] Active session flushed and archived to: {archive_path.name}")
+        else:
+            print("[AGYToolkit] Active session flushed to clean state.")
+
+    elif action == "record":
+        category = args.category
+        decision = args.decision
+        record_decision(category=category, decision=decision, memory_dir=target_dir)
+        print(f"[AGYToolkit] Recorded decision under [{category}].")
+
+
+def handle_bus(args):
+    action = args.bus_action
+    target_dir = Path(args.path or ".").resolve() / ".agents" / "memory"
+
+    if action == "send":
+        raw_payload = args.payload
+        try:
+            payload = json.loads(raw_payload)
+        except (json.JSONDecodeError, TypeError):
+            payload = raw_payload
+
+        evt = publish_event(
+            topic=args.topic,
+            sender=args.sender,
+            payload=payload,
+            recipient=getattr(args, "recipient", "*") or "*",
+            ttl_seconds=getattr(args, "ttl", 3600),
+            memory_dir=target_dir,
+        )
+        print(f"[AGYToolkit Bus] Published event {evt.id} to topic '{evt.topic}' (Recipient: {evt.recipient}).")
+
+    elif action == "read":
+        if getattr(args, "id", None):
+            evt = read_event(event_id=args.id, consume=getattr(args, "consume", False), memory_dir=target_dir)
+            if evt:
+                print(json.dumps(evt.to_dict(), indent=2))
+            else:
+                print(f"[AGYToolkit Bus] Event '{args.id}' not found.")
+        else:
+            if getattr(args, "consume", False):
+                events = consume_events(
+                    topic=getattr(args, "topic", None),
+                    recipient=getattr(args, "recipient", None),
+                    sender=getattr(args, "sender", None),
+                    memory_dir=target_dir,
+                )
+            else:
+                events = list_events(
+                    topic=getattr(args, "topic", None),
+                    recipient=getattr(args, "recipient", None),
+                    sender=getattr(args, "sender", None),
+                    memory_dir=target_dir,
+                )
+            if getattr(args, "json", False):
+                print(json.dumps([e.to_dict() for e in events], indent=2))
+            else:
+                print(f"[AGYToolkit Bus] Found {len(events)} event(s):")
+                for e in events:
+                    print(f"  * {e.id} [{e.topic}] {e.sender} -> {e.recipient}")
+
+    elif action == "list":
+        events = list_events(memory_dir=target_dir)
+        if getattr(args, "json", False):
+            print(json.dumps([e.to_dict() for e in events], indent=2))
+        else:
+            print(f"[AGYToolkit Bus] Active events on volatile bus: {len(events)}")
+            for e in events:
+                print(f"  * {e.id} [{e.topic}] ({e.sender} -> {e.recipient})")
+
+    elif action == "clear":
+        cleared = clear_bus(memory_dir=target_dir)
+        print(f"[AGYToolkit Bus] Cleared {cleared} event payload(s) from volatile bus.")
 
 
 def main(argv: List[str] = None):
@@ -203,11 +316,57 @@ def main(argv: List[str] = None):
     doctor_parser = subparsers.add_parser("doctor", help="Run diagnostic health and governance audit")
     doctor_parser.add_argument("path", nargs="?", default=".", help="Target workspace path (default: current dir)")
     doctor_parser.add_argument("--json", action="store_true", help="Output doctor findings as JSON")
+    doctor_parser.add_argument("--strict", action="store_true", help="Fail with non-zero exit code on any warnings or failures")
 
     # link-global subcommand
     link_parser = subparsers.add_parser("link-global", help="Mount skills and agents to ~/.gemini/config/ for global discovery")
     link_parser.add_argument("--mode", choices=["copy", "symlink"], default="copy", help="Mount method (default: copy)")
     link_parser.add_argument("--dry-run", action="store_true", help="Simulate mounting without writing")
+
+    # memory subcommand
+    mem_parser = subparsers.add_parser("memory", help="Inspect and govern tiered agent memory budgets")
+    mem_sub = mem_parser.add_subparsers(dest="memory_action", required=True)
+
+    mem_status = mem_sub.add_parser("status", help="Check active session and decisions byte caps")
+    mem_status.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    mem_status.add_argument("--json", action="store_true", help="Output memory metrics as JSON")
+
+    mem_flush = mem_sub.add_parser("flush", help="Flush active session working memory")
+    mem_flush.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    mem_flush.add_argument("--no-archive", action="store_true", help="Do not archive current session to sessions/ directory")
+
+    mem_record = mem_sub.add_parser("record", help="Record an architectural decision")
+    mem_record.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    mem_record.add_argument("--category", required=True, help="Decision category (e.g., ARCH, SEC, API)")
+    mem_record.add_argument("--decision", required=True, help="Binding architectural decision statement")
+
+    # bus subcommand
+    bus_parser = subparsers.add_parser("bus", help="Interact with volatile multi-agent event bus")
+    bus_sub = bus_parser.add_subparsers(dest="bus_action", required=True)
+
+    bus_send = bus_sub.add_parser("send", help="Publish event to volatile bus")
+    bus_send.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    bus_send.add_argument("--topic", required=True, help="Event topic (e.g. handoff, review, gate)")
+    bus_send.add_argument("--sender", required=True, help="Sender agent name")
+    bus_send.add_argument("--recipient", default="*", help="Recipient agent name or '*' for broadcast")
+    bus_send.add_argument("--payload", required=True, help="JSON or plain text payload")
+    bus_send.add_argument("--ttl", type=int, default=3600, help="Time-to-live in seconds (default: 3600)")
+
+    bus_read = bus_sub.add_parser("read", help="Read events from volatile bus")
+    bus_read.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    bus_read.add_argument("--id", help="Read specific event by ID")
+    bus_read.add_argument("--topic", help="Filter by topic")
+    bus_read.add_argument("--recipient", help="Filter by recipient")
+    bus_read.add_argument("--sender", help="Filter by sender")
+    bus_read.add_argument("--consume", action="store_true", help="Delete events upon reading")
+    bus_read.add_argument("--json", action="store_true", help="Output events as JSON")
+
+    bus_list = bus_sub.add_parser("list", help="List all events in volatile bus")
+    bus_list.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    bus_list.add_argument("--json", action="store_true", help="Output list as JSON")
+
+    bus_clear = bus_sub.add_parser("clear", help="Clear all volatile bus events")
+    bus_clear.add_argument("path", nargs="?", default=".", help="Workspace root directory")
 
     # flags on root
     parser.add_argument(
@@ -234,6 +393,10 @@ def main(argv: List[str] = None):
         handle_doctor(args)
     elif args.command == "link-global":
         handle_link_global(args)
+    elif args.command == "memory":
+        handle_memory(args)
+    elif args.command == "bus":
+        handle_bus(args)
     elif args.list_skills:
         print_skills()
     elif args.list_agents:

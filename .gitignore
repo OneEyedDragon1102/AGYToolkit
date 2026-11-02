@@ -40,3 +40,16 @@ htmlcov/
 .vscode/
 .DS_Store
 Thumbs.db
+
+
+# AGYToolkit Volatile Memory (Preserves Decisions Log)
+.agents/memory/active-session.md
+.agents/memory/volatile-bus/*
+!.agents/memory/volatile-bus/.gitkeep
+
+
+# Local Development Plans & Backlogs (Local-only, not committed)
+PLAN.md
+BACKLOG.md
+plans/
+backlog/

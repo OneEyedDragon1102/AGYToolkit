@@ -118,3 +118,50 @@ my-service/
    - `code-reviewer` reviews staged diffs.
 6. **Compaction Defense**:
    - When the context window fills, running `/compact` retains all decisions and working state cleanly because volatile data has been offloaded to `.agents/memory/volatile-bus/`.
+
+
+---
+
+## Governance & Diagnostic CLI Commands
+
+AGYToolkit provides essential CLI tools for environment audits, machine-wide installation, and memory management:
+
+### 1. Health & Diagnostic Audit (`doctor`)
+Runs a deep diagnostic check of installed toolchains (Python, Node.js, JDK, Maven, Git), governance rules, hook scripts, and memory limits:
+```bash
+agy-toolkit doctor
+
+# Output in JSON format
+agy-toolkit doctor --json
+
+# Fail with non-zero exit code on any warning or failure (for CI/CD pipelines)
+agy-toolkit doctor --strict
+```
+
+### 2. Global Machine-Wide Installation (`link-global`)
+Mounts all 28 skills and 15 agents into `~/.gemini/config/` so any project opened in Antigravity can discover them:
+```bash
+agy-toolkit link-global
+
+# Preview mounts without writing
+agy-toolkit link-global --dry-run
+```
+
+### 3. Memory & Event Bus Management (`memory` & `bus`)
+Inspect memory budgets, flush active session context, and pass structured inter-agent messages:
+```bash
+# Check memory budget metrics
+agy-toolkit memory status
+
+# Flush working memory and archive state to sessions/
+agy-toolkit memory flush
+
+# Record an architectural decision
+agy-toolkit memory record --category ARCH --decision "Use Hexagonal Architecture."
+
+# Publish an event to the volatile bus
+agy-toolkit bus send --topic review --sender code-reviewer --recipient orchestrator --payload '{"status": "PASS"}'
+
+# List active events on the volatile bus
+agy-toolkit bus list
+```

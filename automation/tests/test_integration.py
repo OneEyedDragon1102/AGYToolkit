@@ -88,7 +88,8 @@ class TestIntegrationHarness(unittest.TestCase):
         scaffold_project(target_path=self.target, project_name="hook-test")
         hook_ps1 = self.target / ".agents" / "hooks" / "anti-bloat-check.ps1"
 
-        if sys.platform != "win32" or not shutil_which("powershell"):
+        ps_cmd = shutil_which("powershell") or shutil_which("pwsh")
+        if not ps_cmd:
             return
 
         # 1. Clean payload -> should pass with decision="allow"
@@ -102,7 +103,7 @@ class TestIntegrationHarness(unittest.TestCase):
             }
         })
         proc_clean = subprocess.run(
-            ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(hook_ps1)],
+            [ps_cmd, "-ExecutionPolicy", "Bypass", "-File", str(hook_ps1)],
             input=clean_input,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -125,7 +126,7 @@ class TestIntegrationHarness(unittest.TestCase):
             }
         })
         proc_bloat = subprocess.run(
-            ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(hook_ps1)],
+            [ps_cmd, "-ExecutionPolicy", "Bypass", "-File", str(hook_ps1)],
             input=bloat_input,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
