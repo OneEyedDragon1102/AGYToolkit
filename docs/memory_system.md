@@ -58,20 +58,19 @@ flowchart TD
   - Pointers to comprehensive ADR documents (`docs/adr/ADR-001-...`).
 - **Enforcement**: Only updated when decisions are reviewed or confirmed. Older decisions are summarized or offloaded to ADR documents when approaching the 3 KB threshold.
 
-### 3. `volatile-bus/` (Ephemeral Dump Zone)
+### 3. `volatile-bus/` (Ephemeral Dump Zone & IPC)
 - **Path**: `.agents/memory/volatile-bus/`
 - **Git Status**: **Strictly Gitignored** (except `.gitignore`).
-- **Purpose**: Prevents prompt token depletion.
+- **Purpose**: Prevents prompt token depletion and serves as the multi-agent IPC message bus.
 - **Protocol**:
   - Any compiler output, stack trace, test log, or subagent research dump exceeding **20 lines** must never be printed directly into the chat thread.
-  - The agent writes the payload to `.agents/memory/volatile-bus/<timestamp>-<topic>.log`.
-  - In the conversation, the agent references only the file path and a 1-line summary.
+  - Inter-agent messages and handoff events are written as structured JSON envelopes with configurable TTL expiration.
 
 ### 4. `sessions/` (Episodic Archive)
 - **Path**: `.agents/memory/sessions/`
 - **Git Status**: **Committed to Version Control**.
 - **Purpose**: Historical log of completed milestones.
-- **Protocol**: When a feature branch is merged or a major milestone is reached, the active session summary is archived as `YYYY-MM-DD-<milestone>.md` in `sessions/`, and `active-session.md` is reset to a clean baseline.
+- **Protocol**: When a feature branch is merged or a major milestone is reached, `agy-toolkit memory flush` archives the active session state as a timestamped markdown file in `sessions/`, and `active-session.md` is reset to a clean baseline.
 
 ---
 
@@ -83,39 +82,115 @@ When a conversation history grows and you run `/compact`:
    - The agent ensures all recent architectural decisions are recorded in `.agents/memory/decisions.md`.
    - The active task and touched files are confirmed in `.agents/memory/active-session.md`.
 2. **Context Compaction**:
-   - The LLM summarizer truncates the conversational turns.
+   - The LLM summarizer truncates conversational turns.
 3. **Post-Compaction Wakeup**:
    - The agent reads `active-session.md` and `decisions.md` (consuming less than 4 KB combined).
    - The agent immediately knows the active branch, the touched files, and the next steps without needing to ask the user or search the repository.
 
 ---
 
-## Programmatic Memory API
+## Memory & Event Bus CLI Commands
 
-AGYToolkit provides a Python memory management library in `agy_toolkit.memory`:
+AGYToolkit provides CLI commands to govern memory budgets and pass messages across agents without context pollution:
 
+### Memory Governance
+```bash
+# Check current memory usage against hard caps (1 KB active-session / 3 KB decisions)
+agy-toolkit memory status
+
+# Output metrics in JSON format for automation
+agy-toolkit memory status --json
+
+# Flush working memory and archive state into sessions/ directory
+agy-toolkit memory flush
+
+# Flush working memory without archiving
+agy-toolkit memory flush --no-archive
+
+# Record a binding architectural decision
+agy-toolkit memory record --category ARCH --decision "Spring Boot microservices must use Hexagonal Architecture."
+```
+
+### Multi-Agent Event Bus (IPC)
+```bash
+# Publish an event to the volatile bus
+agy-toolkit bus send --topic review --sender code-reviewer --recipient node-ts-engineer --payload '{"status": "APPROVED", "findings": 0}'
+
+# List active events on the bus
+agy-toolkit bus list
+
+# Read and consume events matching a specific topic
+agy-toolkit bus read --topic review --consume
+
+# Clear all volatile bus payloads
+agy-toolkit bus clear
+```
+
+---
+
+## Programmatic Python API
+
+Both memory budgets and the volatile bus can be manipulated programmatically:
+
+### Memory Operations (`agy_toolkit.memory`)
 ```python
 from pathlib import Path
 from agy_toolkit.memory import (
-    load_active_session,
-    write_active_session,
+    check_memory_budgets,
+    update_active_session,
+    flush_active_session,
     record_decision,
-    offload_volatile_payload,
 )
 
-memory_dir = Path(".agents/memory")
+mem_dir = Path(".agents/memory")
 
-# Load session
-session = load_active_session(memory_dir)
+# Check memory health
+budgets = check_memory_budgets(mem_dir)
+print(budgets["active_session"]["within_budget"])
 
-# Update touchpoint
-session.touchpoints.append("src/order/OrderService.java")
-write_active_session(memory_dir, session)
-
-# Offload large log
-log_path = offload_volatile_payload(
-    memory_dir=memory_dir,
-    topic="maven-build",
-    payload=compiler_output,
+# Update active working context (enforces 1 KB cap)
+update_active_session(
+    goal="Implement payment webhook",
+    branch="feature/payment-webhook",
+    active_agent="node-ts-engineer",
+    modified_files=["src/webhook.ts", "src/validator.ts"],
+    next_step="Write unit tests",
+    memory_dir=mem_dir,
 )
+
+# Record an architectural decision (enforces 3 KB cap with FIFO eviction)
+record_decision(
+    category="SECURITY",
+    decision="Validate webhook HMAC SHA-256 signatures before parsing payload.",
+    memory_dir=mem_dir,
+)
+
+# Flush active session to archive
+flush_active_session(archive=True, memory_dir=mem_dir)
+```
+
+### Event Bus Operations (`agy_toolkit.bus`)
+```python
+from agy_toolkit.bus import (
+    publish_event,
+    read_event,
+    list_events,
+    consume_events,
+    clear_bus,
+)
+
+# Publish structured event envelope with 1-hour TTL
+event = publish_event(
+    topic="test-results",
+    sender="tdd-specialist",
+    recipient="orchestrator",
+    payload={"passed": 59, "failed": 0},
+    ttl_seconds=3600,
+)
+
+# List active non-expired events for orchestrator
+events = list_events(recipient="orchestrator")
+
+# Consume events matching topic
+results = consume_events(topic="test-results")
 ```
