@@ -3,7 +3,7 @@
 import datetime
 import shutil
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templates"
 
@@ -13,7 +13,7 @@ def scaffold_project(
     project_name: str,
     stack: str = "node-ts",
     mode: str = "feature",
-    templates_dir: Path = None,
+    templates_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Scaffold AGYToolkit governance into a downstream project directory."""
     tmpl_dir = templates_dir or TEMPLATES_DIR
