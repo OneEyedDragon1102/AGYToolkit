@@ -24,12 +24,16 @@ class TestCIWorkflowConfiguration(unittest.TestCase):
         # 2. Multi-OS Matrix
         self.assertIn("ubuntu-latest", content)
         self.assertIn("windows-latest", content)
+        self.assertIn("macos-latest", content)
         self.assertIn("3.12", content)
 
         # 3. Governance and Testing Gates
         self.assertIn("--cov-fail-under=50", content)
         self.assertIn("agy-toolkit doctor", content)
         self.assertIn("Anti-Bloat Code Hygiene Verification", content)
+        self.assertIn("doctor-and-scaffold:", content)
+        self.assertIn("package-and-smoke:", content)
+        self.assertIn("git-discipline:", content)
 
 
 if __name__ == "__main__":

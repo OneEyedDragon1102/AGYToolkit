@@ -1,23 +1,24 @@
-name: AGYToolkit CI & Governance Gate
+name: AGYToolkit Sovereign CI & Governance Gate
 
 on:
   push:
     branches:
       - main
       - 'feature/**'
+      - 'fix/**'
   pull_request:
     branches:
       - main
 
 jobs:
-  test-and-govern:
-    name: Test & Governance Gate (${{ matrix.os }})
+  test-matrix:
+    name: Test Matrix (${{ matrix.os }} / Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ['3.12']
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.10', '3.12']
 
     steps:
       - name: Checkout Repository
@@ -41,10 +42,135 @@ jobs:
         run: |
           pytest automation/tests --cov=agy_toolkit --cov-report=term-missing --cov-fail-under=50
 
-      - name: Run AGYToolkit Doctor Diagnostic
+  doctor-and-scaffold:
+    name: Doctor & Scaffolding Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install AGYToolkit
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Run Root Doctor Diagnostic
         run: |
           agy-toolkit doctor
 
+      - name: Verify Downstream Spring Boot Scaffolding
+        run: |
+          agy-toolkit init "$RUNNER_TEMP/test-spring" --name test-spring --stack spring-boot --mode feature
+          agy-toolkit doctor "$RUNNER_TEMP/test-spring"
+
+      - name: Verify Downstream Node.js / TypeScript Scaffolding
+        run: |
+          agy-toolkit init "$RUNNER_TEMP/test-node" --name test-node --stack node-ts --mode feature
+          agy-toolkit doctor "$RUNNER_TEMP/test-node"
+
+      - name: Verify Downstream Python Scaffolding
+        run: |
+          agy-toolkit init "$RUNNER_TEMP/test-py" --name test-py --stack python --mode feature
+          agy-toolkit doctor "$RUNNER_TEMP/test-py"
+
+  anti-bloat-sentinel:
+    name: Anti-Bloat Sentinel Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Anti-Bloat Code Hygiene Verification
         run: |
-          python -c "import pathlib, sys; src = pathlib.Path('automation/src'); oversized = [f'{p} ({len(p.read_text(encoding=\"utf-8\").splitlines())} lines)' for p in src.rglob('*.py') if len(p.read_text(encoding=\"utf-8\").splitlines()) > 600]; (print('Error: Monolithic files detected:\n' + '\n'.join(oversized)) or sys.exit(1)) if oversized else print('Anti-bloat size audit passed: 0 monolithic files.')"
+          python -c "
+          import pathlib, sys, re
+
+          # 1. Monolithic file size check (<600 lines)
+          src = pathlib.Path('automation/src')
+          oversized = [f'{p} ({len(p.read_text(encoding=\"utf-8\").splitlines())} lines)' for p in src.rglob('*.py') if len(p.read_text(encoding=\"utf-8\").splitlines()) > 600]
+          if oversized:
+              print('Error: Monolithic files exceeding 600 lines detected:')
+              for o in oversized:
+                  print(f'  - {o}')
+              sys.exit(1)
+          print('Pass: 0 monolithic files detected in automation/src (all <600 lines).')
+
+          # 2. Zero-emoji enforcement in source and hook files
+          emoji_pattern = re.compile(r'[\U00010000-\U0010ffff]')
+          emoji_files = []
+          for path in list(pathlib.Path('automation/src').rglob('*.py')) + list(pathlib.Path('.agents/hooks').glob('*.*')):
+              content = path.read_text(encoding='utf-8', errors='ignore')
+              for idx, line in enumerate(content.splitlines(), 1):
+                  if emoji_pattern.search(line):
+                      emoji_files.append(f'{path}:{idx}: {line.strip()[:60]}')
+          if emoji_files:
+              print('Error: Unicode emojis detected in production code/hooks:')
+              for ef in emoji_files:
+                  print(f'  - {ef}')
+              sys.exit(1)
+          print('Pass: Zero emojis detected in production code and lifecycle hooks.')
+          "
+
+  package-and-smoke:
+    name: Distribution & CLI Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build Sdist & Wheel Packages
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Install Built Wheel
+        run: |
+          pip install dist/*.whl
+
+      - name: Smoke Test CLI Entrypoints
+        run: |
+          agy-toolkit --list-tools
+          agy-toolkit --list-agents
+          agy-toolkit --list-skills
+          agy-toolkit memory status
+          agy-toolkit bus list
+          agy-toolkit link-global --dry-run
+
+  git-discipline:
+    name: Git Discipline & Branch Enforcement
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify Branch Naming Convention
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+          echo "Validating branch name: $BRANCH_NAME"
+          if [[ ! "$BRANCH_NAME" =~ ^(feature|fix|test|refactor|docs|chore)/ ]]; then
+            echo "Error: Branch name '$BRANCH_NAME' does not adhere to AGYToolkit branch conventions."
+            echo "Permitted prefixes: feature/, fix/, test/, refactor/, docs/, chore/"
+            exit 1
+          fi
+          echo "Pass: Branch name adheres to git conventions."
