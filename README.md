@@ -111,6 +111,9 @@ agy-toolkit memory flush
 # Publish inter-agent event to volatile bus
 agy-toolkit bus send --topic review --sender code-reviewer --recipient orchestrator --payload '{"status": "PASS"}'
 
+# Stream and watch incoming events in real time
+agy-toolkit bus watch --topic review --timeout 60
+
 # List all 28 progressive SDLC skills across 5 tracks
 agy-toolkit --list-skills
 
@@ -145,7 +148,7 @@ AGYToolkit/
 │
 ├── automation/                  # Framework CLI, core engines & verification
 │   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, bus, doctor, linker, mcp)
-│   └── tests/                   # 74 automated unit & verification tests
+│   └── tests/                   # 81 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide

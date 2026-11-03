@@ -86,6 +86,7 @@ class TestMcpServer(unittest.TestCase):
         self.assertIn("agy_memory_record", tool_names)
         self.assertIn("agy_bus_send", tool_names)
         self.assertIn("agy_bus_read", tool_names)
+        self.assertIn("agy_bus_claim", tool_names)
 
         # Inspect inputSchema contracts
         for tool in tools:
@@ -199,6 +200,44 @@ class TestMcpServer(unittest.TestCase):
         self.assertEqual(read_events[0]["sender"], "architect")
         self.assertEqual(read_events[0]["payload"]["next_agent"], "tdd-architect")
 
+    def test_tool_call_bus_claim(self):
+        """Verify agy_bus_claim atomically claims event."""
+        send_req = {
+            "jsonrpc": "2.0",
+            "id": 100,
+            "method": "tools/call",
+            "params": {
+                "name": "agy_bus_send",
+                "arguments": {"topic": "claim-test", "source": "s", "payload": {"foo": "bar"}}
+            }
+        }
+        send_res = json.loads(self.server.process_line(json.dumps(send_req)))
+        self.assertFalse(send_res["result"]["isError"])
+
+        read_req = {
+            "jsonrpc": "2.0",
+            "id": 101,
+            "method": "tools/call",
+            "params": {"name": "agy_bus_read", "arguments": {"topic": "claim-test"}}
+        }
+        events = json.loads(json.loads(self.server.process_line(json.dumps(read_req)))["result"]["content"][0]["text"])
+        evt_id = events[0]["id"]
+
+        claim_req = {
+            "jsonrpc": "2.0",
+            "id": 102,
+            "method": "tools/call",
+            "params": {"name": "agy_bus_claim", "arguments": {"event_id": evt_id, "claimer": "worker-1"}}
+        }
+        claim_res = json.loads(self.server.process_line(json.dumps(claim_req)))
+        self.assertFalse(claim_res["result"]["isError"])
+        claimed_data = json.loads(claim_res["result"]["content"][0]["text"])
+        self.assertEqual(claimed_data["id"], evt_id)
+
+        # Second claim attempt must fail
+        claim_again = json.loads(self.server.process_line(json.dumps(claim_req)))
+        self.assertTrue(claim_again["result"]["isError"])
+
     def test_tool_call_unknown_tool(self):
         """Verify calling an unknown tool returns isError=True."""
         req = {
@@ -249,7 +288,7 @@ class TestMcpServer(unittest.TestCase):
         """Verify exporting tool schemas to static directory."""
         schema_dir = self.workspace_dir / "schemas"
         exported = self.server.export_schemas(schema_dir)
-        self.assertEqual(len(exported), 5)
+        self.assertEqual(len(exported), 6)
         for path in exported:
             self.assertTrue(path.exists())
             data = json.loads(path.read_text(encoding="utf-8"))
