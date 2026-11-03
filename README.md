@@ -99,6 +99,12 @@ agy-toolkit init ../my-service --name my-service --stack spring-boot --mode feat
 # Check active session and decisions memory budgets
 agy-toolkit memory status
 
+# Start native Antigravity MCP Server over stdio
+agy-toolkit mcp
+
+# Export static MCP tool schemas for Antigravity discovery
+agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
+
 # Flush active session and archive to sessions/
 agy-toolkit memory flush
 
@@ -138,11 +144,12 @@ AGYToolkit/
 │       └── AGENTS.md.template   # Injected agent instructions
 │
 ├── automation/                  # Framework CLI, core engines & verification
-│   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, bus, doctor, linker)
-│   └── tests/                   # 59 automated unit & verification tests
+│   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, bus, doctor, linker, mcp)
+│   └── tests/                   # 74 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide
+    ├── mcp_server.md            # Native Antigravity MCP Server setup & tool reference
     ├── specialist_agents.md     # In-depth reference for all 15 agents
     ├── skills_catalog.md        # Comprehensive catalog of all 28 skills
     ├── memory_system.md         # Architecture of the dual-tier memory engine & event bus
@@ -154,6 +161,7 @@ AGYToolkit/
 ## Documentation Reference
 
 - [Getting Started Guide](docs/getting_started.md)
+- [Native Antigravity MCP Server](docs/mcp_server.md)
 - [Specialist Agents Reference](docs/specialist_agents.md)
 - [Progressive Skills Catalog](docs/skills_catalog.md)
 - [Memory System Architecture](docs/memory_system.md)

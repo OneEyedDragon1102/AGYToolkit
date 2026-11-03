@@ -165,3 +165,16 @@ agy-toolkit bus send --topic review --sender code-reviewer --recipient orchestra
 # List active events on the volatile bus
 agy-toolkit bus list
 ```
+
+### 4. Native Antigravity MCP Server (`mcp`)
+Run the standard I/O JSON-RPC Model Context Protocol (MCP) server or export static schemas:
+```bash
+# Start native Antigravity MCP server over stdio
+agy-toolkit mcp
+
+# Export static tool schemas for auto-discovery
+agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
+```
+
+For configuration details and tool parameter schemas, refer to the [Native Antigravity MCP Server Guide](mcp_server.md).
+```

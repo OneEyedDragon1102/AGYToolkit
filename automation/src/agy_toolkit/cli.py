@@ -290,6 +290,21 @@ def handle_bus(args):
         print(f"[AGYToolkit Bus] Cleared {cleared} event payload(s) from volatile bus.")
 
 
+def handle_mcp(args):
+    target = Path(args.path or ".").resolve()
+    from agy_toolkit.mcp_server import McpServer
+
+    server = McpServer(workspace_root=target)
+    if getattr(args, "export_schemas", None):
+        out_dir = Path(args.export_schemas).resolve()
+        exported = server.export_schemas(out_dir)
+        print(f"[AGYToolkit MCP] Exported {len(exported)} MCP tool schemas to {out_dir}")
+        for p in exported:
+            print(f"  * {p.name}")
+    else:
+        server.run_stdio()
+
+
 def main(argv: List[str] = None):
     # Ensure safe encoding for Windows command line output when running standalone
     if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
@@ -368,6 +383,23 @@ def main(argv: List[str] = None):
     bus_clear = bus_sub.add_parser("clear", help="Clear all volatile bus events")
     bus_clear.add_argument("path", nargs="?", default=".", help="Workspace root directory")
 
+    # mcp command
+    mcp_parser = subparsers.add_parser(
+        "mcp",
+        help="Start native Antigravity MCP Server over stdio or export schemas",
+    )
+    mcp_parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Workspace root directory (default: current directory)",
+    )
+    mcp_parser.add_argument(
+        "--export-schemas",
+        dest="export_schemas",
+        help="Export tool schema JSON files into target directory and exit",
+    )
+
     # flags on root
     parser.add_argument(
         "--list-tools",
@@ -397,6 +429,8 @@ def main(argv: List[str] = None):
         handle_memory(args)
     elif args.command == "bus":
         handle_bus(args)
+    elif args.command == "mcp":
+        handle_mcp(args)
     elif args.list_skills:
         print_skills()
     elif args.list_agents:

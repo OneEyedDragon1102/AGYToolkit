@@ -1,8 +1,10 @@
 """Unit tests for AGYToolkit CLI and tool catalog using standard unittest."""
 
 import io
+import tempfile
 import unittest
 from contextlib import redirect_stdout
+from pathlib import Path
 
 from agy_toolkit.cli import (
     TOOL_CATALOG,
@@ -83,6 +85,18 @@ class TestCLI(unittest.TestCase):
             main(["--list-skills"])
         out = f.getvalue()
         self.assertIn("[AGYToolkit] Progressive SDLC Skills Catalog (28 Skills across 5 Tracks)", out)
+
+    def test_main_with_mcp_export_schemas(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            schema_dir = tmp_path / "schemas"
+            f = io.StringIO()
+            with redirect_stdout(f):
+                main(["mcp", str(tmp_path), "--export-schemas", str(schema_dir)])
+            out = f.getvalue()
+            self.assertIn("[AGYToolkit MCP] Exported 5 MCP tool schemas", out)
+            self.assertTrue((schema_dir / "agy_doctor.json").exists())
+            self.assertTrue((schema_dir / "agy_bus_send.json").exists())
 
 
 if __name__ == "__main__":
