@@ -19,6 +19,13 @@ from agy_toolkit.memory import (
     flush_active_session,
     record_decision,
 )
+from agy_toolkit.pr_reviewer import (
+    PR_BOT_SIGNATURE,
+    audit_diff,
+    audit_diff_content,
+    generate_review_card,
+    run_pr_review,
+)
 
 __version__ = "0.1.0"
 
@@ -39,4 +46,9 @@ __all__ = [
     "check_memory_budgets",
     "flush_active_session",
     "record_decision",
+    "PR_BOT_SIGNATURE",
+    "audit_diff",
+    "audit_diff_content",
+    "generate_review_card",
+    "run_pr_review",
 ]

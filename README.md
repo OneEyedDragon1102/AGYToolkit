@@ -114,6 +114,9 @@ agy-toolkit bus send --topic review --sender code-reviewer --recipient orchestra
 # Stream and watch incoming events in real time
 agy-toolkit bus watch --topic review --timeout 60
 
+# Run autonomous PR review and diff audit locally
+agy-toolkit pr-review --base origin/main
+
 # List all 28 progressive SDLC skills across 5 tracks
 agy-toolkit --list-skills
 
@@ -148,11 +151,12 @@ AGYToolkit/
 │
 ├── automation/                  # Framework CLI, core engines & verification
 │   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, bus, doctor, linker, mcp)
-│   └── tests/                   # 81 automated unit & verification tests
+│   └── tests/                   # 88 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide
     ├── mcp_server.md            # Native Antigravity MCP Server setup & tool reference
+    ├── ci_cd_governance.md      # CI/CD pipeline and PR review bot guide
     ├── specialist_agents.md     # In-depth reference for all 15 agents
     ├── skills_catalog.md        # Comprehensive catalog of all 28 skills
     ├── memory_system.md         # Architecture of the dual-tier memory engine & event bus
@@ -165,6 +169,7 @@ AGYToolkit/
 
 - [Getting Started Guide](docs/getting_started.md)
 - [Native Antigravity MCP Server](docs/mcp_server.md)
+- [CI/CD Governance & PR Review Bot](docs/ci_cd_governance.md)
 - [Specialist Agents Reference](docs/specialist_agents.md)
 - [Progressive Skills Catalog](docs/skills_catalog.md)
 - [Memory System Architecture](docs/memory_system.md)
