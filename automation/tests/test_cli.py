@@ -107,6 +107,16 @@ class TestCLI(unittest.TestCase):
             out = f.getvalue()
             self.assertIn("[AGYToolkit Bus] Watching volatile bus for events", out)
 
+    def test_main_with_pr_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            f = io.StringIO()
+            with redirect_stdout(f):
+                main(["pr-review", str(tmp_path)])
+            out = f.getvalue()
+            self.assertIn("AGYToolkit Autonomous Governance & Health Report", out)
+            self.assertIn("<!-- AGYToolkit-PR-Review-Bot -->", out)
+
 
 if __name__ == "__main__":
     unittest.main()

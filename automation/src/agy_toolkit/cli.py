@@ -338,6 +338,27 @@ def handle_mcp(args):
         server.run_stdio()
 
 
+def handle_pr_review(args):
+    target = Path(args.path or ".").resolve()
+    base_ref = getattr(args, "base", "origin/main")
+    output_path = getattr(args, "output", None)
+    strict = getattr(args, "strict", False)
+
+    from agy_toolkit.pr_reviewer import run_pr_review
+
+    card, overall_pass = run_pr_review(base_ref=base_ref, workspace_root=target)
+
+    if output_path:
+        out_file = Path(output_path).resolve()
+        out_file.write_text(card + "\n", encoding="utf-8")
+        print(f"[AGYToolkit PR Review] Review card written to: {out_file}")
+    else:
+        print(card)
+
+    if strict and not overall_pass:
+        sys.exit(1)
+
+
 def main(argv: List[str] = None):
     # Ensure safe encoding for Windows command line output when running standalone
     if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
@@ -442,6 +463,32 @@ def main(argv: List[str] = None):
         help="Export tool schema JSON files into target directory and exit",
     )
 
+    # pr-review command
+    pr_parser = subparsers.add_parser(
+        "pr-review",
+        help="Generate autonomous PR review report card and audit pull request diff",
+    )
+    pr_parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Workspace root directory (default: current directory)",
+    )
+    pr_parser.add_argument(
+        "--base",
+        default="origin/main",
+        help="Base git reference to diff against (default: origin/main)",
+    )
+    pr_parser.add_argument(
+        "--output",
+        help="File path to write markdown review card into",
+    )
+    pr_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit with non-zero code on any governance or anti-bloat failure",
+    )
+
     # flags on root
     parser.add_argument(
         "--list-tools",
@@ -473,6 +520,8 @@ def main(argv: List[str] = None):
         handle_bus(args)
     elif args.command == "mcp":
         handle_mcp(args)
+    elif args.command == "pr-review":
+        handle_pr_review(args)
     elif args.list_skills:
         print_skills()
     elif args.list_agents:

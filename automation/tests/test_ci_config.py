@@ -35,6 +35,16 @@ class TestCIWorkflowConfiguration(unittest.TestCase):
         self.assertIn("package-and-smoke:", content)
         self.assertIn("git-discipline:", content)
 
+    def test_pr_review_workflow_structure(self):
+        """Verify .github/workflows/pr-review.yml exists and has proper permissions and bot script."""
+        pr_path = REPO_ROOT / ".github" / "workflows" / "pr-review.yml"
+        self.assertTrue(pr_path.exists())
+        content = pr_path.read_text(encoding="utf-8")
+        self.assertIn("pull-requests: write", content)
+        self.assertIn("agy-toolkit pr-review", content)
+        self.assertIn("actions/github-script", content)
+        self.assertIn("<!-- AGYToolkit-PR-Review-Bot -->", content)
+
 
 if __name__ == "__main__":
     unittest.main()
