@@ -193,4 +193,25 @@ events = list_events(recipient="orchestrator")
 
 # Consume events matching topic
 results = consume_events(topic="test-results")
+
+# Stream events in real-time until timeout or count reached
+for evt in watch_events(topic="test-results", timeout_seconds=10.0):
+    print(f"Received event: {evt.id}")
+
+# Atomically claim an event (prevents double consumption by competing agents)
+claimed = claim_event(event.id, claimer="orchestrator")
+if claimed:
+    complete_claimed_event(event.id, claimer="orchestrator")
+```
+
+---
+
+## 5. Concurrency, Atomicity & Deadlock Prevention
+
+The AGYToolkit IPC event bus is designed for concurrent multi-agent swarm environments:
+
+1. **Atomic File Staging**: Publishers write to `.tmp_<uuid>` before invoking atomic `os.replace()`, preventing partial reads or `JSONDecodeError` torn data.
+2. **Lockless Architecture**: The event bus uses no blocking locks. Events are immutable once published.
+3. **Atomic Task Claiming**: Competing worker agents use `O_CREAT | O_EXCL` atomic claim files (`.claim`) to guarantee exactly one worker wins a task race with zero double-processing.
+4. **Deadlock Immunity**: All watchers require explicit `timeout_seconds`, eliminating indefinite blocking. Abandoned tickets expire cleanly via TTL thresholds.
 ```

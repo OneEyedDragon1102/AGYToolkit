@@ -94,9 +94,18 @@ class TestCLI(unittest.TestCase):
             with redirect_stdout(f):
                 main(["mcp", str(tmp_path), "--export-schemas", str(schema_dir)])
             out = f.getvalue()
-            self.assertIn("[AGYToolkit MCP] Exported 5 MCP tool schemas", out)
+            self.assertIn("[AGYToolkit MCP] Exported 6 MCP tool schemas", out)
             self.assertTrue((schema_dir / "agy_doctor.json").exists())
             self.assertTrue((schema_dir / "agy_bus_send.json").exists())
+
+    def test_main_with_bus_watch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            f = io.StringIO()
+            with redirect_stdout(f):
+                main(["bus", "watch", str(tmp_path), "--timeout", "0.1"])
+            out = f.getvalue()
+            self.assertIn("[AGYToolkit Bus] Watching volatile bus for events", out)
 
 
 if __name__ == "__main__":

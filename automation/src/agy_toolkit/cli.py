@@ -289,6 +289,39 @@ def handle_bus(args):
         cleared = clear_bus(memory_dir=target_dir)
         print(f"[AGYToolkit Bus] Cleared {cleared} event payload(s) from volatile bus.")
 
+    elif action == "watch":
+        from agy_toolkit.bus import watch_events, claim_event, complete_claimed_event
+
+        timeout = getattr(args, "timeout", None)
+        consume = getattr(args, "consume", False)
+        topic = getattr(args, "topic", None)
+        recipient = getattr(args, "recipient", None)
+        sender = getattr(args, "sender", None)
+        output_json = getattr(args, "json", False)
+
+        if not output_json:
+            filt = f" [topic: {topic}]" if topic else ""
+            print(f"[AGYToolkit Bus] Watching volatile bus for events{filt} (timeout: {timeout or 'infinite'})...")
+
+        for event in watch_events(
+            topic=topic,
+            recipient=recipient,
+            sender=sender,
+            timeout_seconds=timeout,
+            memory_dir=target_dir,
+        ):
+            if consume:
+                claimed = claim_event(event.id, claimer="bus-watch-cli", memory_dir=target_dir)
+                if claimed:
+                    complete_claimed_event(event.id, claimer="bus-watch-cli", memory_dir=target_dir)
+
+            if output_json:
+                print(json.dumps(event.to_dict()))
+                sys.stdout.flush()
+            else:
+                print(f"[EVENT] {event.id} [{event.topic}] {event.sender} -> {event.recipient}: {json.dumps(event.payload)}")
+                sys.stdout.flush()
+
 
 def handle_mcp(args):
     target = Path(args.path or ".").resolve()
@@ -382,6 +415,15 @@ def main(argv: List[str] = None):
 
     bus_clear = bus_sub.add_parser("clear", help="Clear all volatile bus events")
     bus_clear.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+
+    bus_watch = bus_sub.add_parser("watch", help="Watch and stream events from volatile bus in real time")
+    bus_watch.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    bus_watch.add_argument("--topic", help="Filter by topic")
+    bus_watch.add_argument("--recipient", help="Filter by recipient")
+    bus_watch.add_argument("--sender", help="Filter by sender")
+    bus_watch.add_argument("--timeout", type=float, help="Timeout in seconds before exiting")
+    bus_watch.add_argument("--consume", action="store_true", help="Atomically consume events as they arrive")
+    bus_watch.add_argument("--json", action="store_true", help="Stream events as JSON Lines")
 
     # mcp command
     mcp_parser = subparsers.add_parser(

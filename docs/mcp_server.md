@@ -105,6 +105,13 @@ The MCP server exposes five native tools:
   - `limit` *(integer, optional, default: `10`)*: Maximum number of events to return.
 * **Output**: JSON array of matching event envelopes.
 
+### `agy_bus_claim`
+* **Description**: Atomically claims an event from the volatile bus to prevent duplicate processing by competing agents.
+* **Arguments**:
+  - `event_id` *(string, required)*: The unique ID of the event envelope to claim.
+  - `claimer` *(string, required)*: Identifier of the claiming agent.
+* **Output**: Claimed event payload or error if already claimed.
+
 ---
 
 ## 4. CLI Usage & Schema Export
@@ -122,10 +129,11 @@ agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
 ```
 Output:
 ```text
-[AGYToolkit MCP] Exported 5 MCP tool schemas to .../.agents/mcp/agy-toolkit
+[AGYToolkit MCP] Exported 6 MCP tool schemas to .../.agents/mcp/agy-toolkit
   * agy_doctor.json
   * agy_memory_status.json
   * agy_memory_record.json
   * agy_bus_send.json
   * agy_bus_read.json
+  * agy_bus_claim.json
 ```

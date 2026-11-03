@@ -6,6 +6,9 @@ from agy_toolkit.bus import (
     read_event,
     list_events,
     consume_events,
+    claim_event,
+    complete_claimed_event,
+    watch_events,
     clear_bus,
 )
 from agy_toolkit.doctor import run_doctor, DoctorReport
@@ -25,6 +28,9 @@ __all__ = [
     "read_event",
     "list_events",
     "consume_events",
+    "claim_event",
+    "complete_claimed_event",
+    "watch_events",
     "clear_bus",
     "run_doctor",
     "DoctorReport",

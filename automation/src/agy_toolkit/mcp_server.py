@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from agy_toolkit.bus import list_events, publish_event
+from agy_toolkit.bus import claim_event, list_events, publish_event
 from agy_toolkit.doctor import run_doctor
 from agy_toolkit.memory import check_memory_budgets, record_decision
 
@@ -118,6 +118,24 @@ class McpServer:
                     },
                 },
             },
+            {
+                "name": "agy_bus_claim",
+                "description": "Atomically claim an event on the volatile bus to prevent duplicate processing by competing agents.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["event_id", "claimer"],
+                    "properties": {
+                        "event_id": {
+                            "type": "string",
+                            "description": "Unique identifier of the event to claim.",
+                        },
+                        "claimer": {
+                            "type": "string",
+                            "description": "Identifier of the claiming agent.",
+                        },
+                    },
+                },
+            },
         ]
 
     def execute_tool(self, name: str, arguments: Dict[str, Any]) -> Tuple[str, bool]:
@@ -188,6 +206,16 @@ class McpServer:
                 sliced = events[:limit]
                 serialized = [e.to_dict() for e in sliced]
                 return json.dumps(serialized, indent=2), False
+
+            if name == "agy_bus_claim":
+                event_id = arguments.get("event_id")
+                claimer = arguments.get("claimer")
+                if not event_id or not claimer:
+                    return "Error: 'event_id' and 'claimer' are required.", True
+                claimed = claim_event(event_id=event_id, claimer=claimer, memory_dir=self.mem_dir)
+                if claimed is None:
+                    return f"Event {event_id} could not be claimed (already claimed or does not exist).", True
+                return json.dumps(claimed.to_dict(), indent=2), False
 
             return f"Unknown tool: '{name}'.", True
         except Exception as ex:

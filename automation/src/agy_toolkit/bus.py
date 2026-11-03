@@ -4,10 +4,11 @@ import datetime
 import json
 import os
 import tempfile
+import time
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Set
 
 from agy_toolkit.memory import ensure_memory_dirs, MEMORY_DIR
 
@@ -129,6 +130,61 @@ def read_event(
         return None
 
 
+def claim_event(
+    event_id: str,
+    claimer: str,
+    memory_dir: Optional[Path] = None,
+) -> Optional[BusEvent]:
+    """Atomically claim an event for processing, preventing duplicate execution by competing agents."""
+    bus_dir = _get_volatile_bus_dir(memory_dir)
+    source_file = bus_dir / f"{event_id}.json"
+    claim_lock = bus_dir / f"{event_id}.claim"
+
+    if not source_file.exists():
+        return None
+
+    try:
+        # Atomic lock creation via O_CREAT | O_EXCL
+        fd = os.open(str(claim_lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        with open(fd, "w", encoding="utf-8") as f:
+            f.write(json.dumps({
+                "claimer": claimer,
+                "claimed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            }))
+    except (FileExistsError, OSError):
+        # Another thread or agent won the claim race
+        return None
+
+    try:
+        with open(source_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        event = BusEvent.from_dict(data)
+        try:
+            source_file.unlink()
+        except OSError:
+            pass
+        return event
+    except (json.JSONDecodeError, OSError, KeyError):
+        return None
+
+
+def complete_claimed_event(
+    event_id: str,
+    claimer: str,
+    memory_dir: Optional[Path] = None,
+) -> bool:
+    """Remove a claimed event lock once task processing is completed."""
+    bus_dir = _get_volatile_bus_dir(memory_dir)
+    claim_lock = bus_dir / f"{event_id}.claim"
+    try:
+        if claim_lock.exists():
+            claim_lock.unlink()
+            return True
+        return False
+    except OSError:
+        return False
+
+
 def list_events(
     topic: Optional[str] = None,
     recipient: Optional[str] = None,
@@ -224,3 +280,70 @@ def clear_bus(memory_dir: Optional[Path] = None) -> int:
             continue
 
     return cleared_count
+
+
+def watch_events(
+    topic: Optional[str] = None,
+    recipient: Optional[str] = None,
+    sender: Optional[str] = None,
+    timeout_seconds: Optional[float] = None,
+    poll_interval: float = 0.05,
+    memory_dir: Optional[Path] = None,
+    stop_after: Optional[int] = None,
+) -> Generator[BusEvent, None, None]:
+    """Yield newly published events matching filters in real-time until timeout or count reached."""
+    bus_dir = _get_volatile_bus_dir(memory_dir)
+    seen_ids: Set[str] = set()
+    start_time = time.time()
+    yielded_count = 0
+
+    while True:
+        if timeout_seconds is not None:
+            elapsed = time.time() - start_time
+            if elapsed >= timeout_seconds:
+                break
+
+        if stop_after is not None and yielded_count >= stop_after:
+            break
+
+        try:
+            candidate_files = sorted(bus_dir.glob("*.json"))
+        except OSError:
+            candidate_files = []
+
+        for file_path in candidate_files:
+            stem = file_path.stem
+            if stem in seen_ids:
+                continue
+
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                event = BusEvent.from_dict(data)
+
+                if event.is_expired():
+                    seen_ids.add(stem)
+                    continue
+
+                if topic and event.topic != topic:
+                    seen_ids.add(stem)
+                    continue
+
+                if recipient and event.recipient not in ("*", recipient):
+                    seen_ids.add(stem)
+                    continue
+
+                if sender and event.sender != sender:
+                    seen_ids.add(stem)
+                    continue
+
+                seen_ids.add(stem)
+                yielded_count += 1
+                yield event
+
+                if stop_after is not None and yielded_count >= stop_after:
+                    return
+            except (json.JSONDecodeError, OSError, KeyError):
+                continue
+
+        time.sleep(poll_interval)
