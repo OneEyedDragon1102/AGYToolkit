@@ -87,6 +87,7 @@ class TestMcpServer(unittest.TestCase):
         self.assertIn("agy_bus_send", tool_names)
         self.assertIn("agy_bus_read", tool_names)
         self.assertIn("agy_bus_claim", tool_names)
+        self.assertIn("agy_update", tool_names)
 
         # Inspect inputSchema contracts
         for tool in tools:
@@ -238,6 +239,24 @@ class TestMcpServer(unittest.TestCase):
         claim_again = json.loads(self.server.process_line(json.dumps(claim_req)))
         self.assertTrue(claim_again["result"]["isError"])
 
+    def test_tool_call_update(self):
+        """Verify agy_update tool execution via MCP."""
+        req = {
+            "jsonrpc": "2.0",
+            "id": 105,
+            "method": "tools/call",
+            "params": {
+                "name": "agy_update",
+                "arguments": {"dry_run": True}
+            }
+        }
+        res_raw = self.server.process_line(json.dumps(req))
+        res = json.loads(res_raw)
+        self.assertEqual(res["id"], 105)
+        self.assertFalse(res["result"]["isError"])
+        self.assertIn("AGYToolkit Project Update", res["result"]["content"][0]["text"])
+        self.assertIn("DRY RUN", res["result"]["content"][0]["text"])
+
     def test_tool_call_unknown_tool(self):
         """Verify calling an unknown tool returns isError=True."""
         req = {
@@ -288,7 +307,8 @@ class TestMcpServer(unittest.TestCase):
         """Verify exporting tool schemas to static directory."""
         schema_dir = self.workspace_dir / "schemas"
         exported = self.server.export_schemas(schema_dir)
-        self.assertEqual(len(exported), 6)
+        self.assertEqual(len(exported), 7)
+        self.assertTrue((schema_dir / "agy_update.json").exists())
         for path in exported:
             self.assertTrue(path.exists())
             data = json.loads(path.read_text(encoding="utf-8"))

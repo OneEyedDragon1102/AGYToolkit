@@ -96,6 +96,12 @@ agy-toolkit link-global
 # Scaffold governance into a target project
 agy-toolkit init ../my-service --name my-service --stack spring-boot --mode feature
 
+# Update skills, agents, and hooks in downstream project non-destructively
+agy-toolkit update ../my-service
+
+# Preview updates in dry-run mode
+agy-toolkit update ../my-service --dry-run
+
 # Check active session and decisions memory budgets
 agy-toolkit memory status
 
