@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from agy_toolkit.bus import claim_event, list_events, publish_event
 from agy_toolkit.doctor import run_doctor
 from agy_toolkit.memory import check_memory_budgets, record_decision
+from agy_toolkit.updater import update_project, format_update_report
 
 PROTOCOL_VERSION = "2024-11-05"
 SERVER_NAME = "agy-toolkit-mcp"
@@ -119,6 +120,25 @@ class McpServer:
                 },
             },
             {
+                "name": "agy_update",
+                "description": "Non-destructively update skills, agents, and hooks in downstream workspace.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "Preview changes without modifying filesystem.",
+                            "default": False,
+                        },
+                        "force_rules": {
+                            "type": "boolean",
+                            "description": "Force overwrite project rules (GEMINI.md, AGENTS.md).",
+                            "default": False,
+                        },
+                    },
+                },
+            },
+            {
                 "name": "agy_bus_claim",
                 "description": "Atomically claim an event on the volatile bus to prevent duplicate processing by competing agents.",
                 "inputSchema": {
@@ -216,6 +236,16 @@ class McpServer:
                 if claimed is None:
                     return f"Event {event_id} could not be claimed (already claimed or does not exist).", True
                 return json.dumps(claimed.to_dict(), indent=2), False
+
+            if name == "agy_update":
+                dry_run = bool(arguments.get("dry_run", False))
+                force_rules = bool(arguments.get("force_rules", False))
+                report = update_project(
+                    target_path=self.workspace_root,
+                    dry_run=dry_run,
+                    force_rules=force_rules,
+                )
+                return format_update_report(report), not report.success
 
             return f"Unknown tool: '{name}'.", True
         except Exception as ex:

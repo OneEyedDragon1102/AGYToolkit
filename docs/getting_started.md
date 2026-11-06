@@ -78,6 +78,32 @@ agy-toolkit init ../my-service --name order-service --stack spring-boot --mode f
 
 ---
 
+## Updating an Existing Downstream Project
+
+As AGYToolkit releases improvements to its 28 skills, 15 agent prompts, or lifecycle hook scripts, existing projects can pull these updates non-destructively:
+
+### Command Syntax
+```bash
+agy-toolkit update [target-path] [--dry-run] [--force-rules] [--json]
+```
+
+### Parameters
+- `target-path`: Target project directory (defaults to current directory `.`).
+- `--dry-run`: Preview planned updates without writing to disk.
+- `--force-rules`: Force overwrite `GEMINI.md` and `AGENTS.md` rules with latest blueprints (by default, custom rules are strictly preserved).
+- `--json`: Output structured JSON update report.
+
+### Example
+```bash
+# Non-destructively update skills, agents, and hooks in an existing repo
+agy-toolkit update ../order-service
+
+# Preview updates in dry-run mode
+agy-toolkit update ../order-service --dry-run
+```
+
+---
+
 ## Structure Injected into Target Workspaces
 
 When `agy-toolkit init` runs, it creates the following structure:

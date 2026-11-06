@@ -22,6 +22,7 @@ from agy_toolkit.memory import (
     record_decision,
 )
 from agy_toolkit.scaffolder import scaffold_project
+from agy_toolkit.updater import update_project, format_update_report
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templates"
 
@@ -149,6 +150,25 @@ def handle_init(args):
     print("\nNext step: Open this workspace in AGY to activate autonomous governance.")
     print("=" * 60)
 
+
+
+def handle_update(args) -> int:
+    target = Path(args.path or ".").resolve()
+    dry_run = getattr(args, "dry_run", False)
+    force_rules = getattr(args, "force_rules", False)
+
+    report = update_project(
+        target_path=target,
+        dry_run=dry_run,
+        force_rules=force_rules,
+    )
+
+    if getattr(args, "json", False):
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        print(format_update_report(report))
+
+    return 0 if report.success else 1
 
 
 def handle_doctor(args):
@@ -381,6 +401,13 @@ def main(argv: List[str] = None):
     init_parser.add_argument("--stack", choices=["spring-boot", "node-ts", "python"], default="node-ts", help="Primary tech stack")
     init_parser.add_argument("--mode", choices=["feature", "spike", "quickfix"], default="feature", help="Operational mode")
 
+    # update subcommand
+    update_parser = subparsers.add_parser("update", help="Update skills, agents, and hooks in an existing downstream repository")
+    update_parser.add_argument("path", nargs="?", default=".", help="Target project directory path (default: current dir)")
+    update_parser.add_argument("--dry-run", action="store_true", help="Simulate update and preview changes without writing")
+    update_parser.add_argument("--force-rules", action="store_true", help="Force refresh GEMINI.md and AGENTS.md rules from latest templates")
+    update_parser.add_argument("--json", action="store_true", help="Output update report as JSON")
+
     # doctor subcommand
     doctor_parser = subparsers.add_parser("doctor", help="Run diagnostic health and governance audit")
     doctor_parser.add_argument("path", nargs="?", default=".", help="Target workspace path (default: current dir)")
@@ -510,6 +537,8 @@ def main(argv: List[str] = None):
 
     if args.command == "init":
         handle_init(args)
+    elif args.command == "update":
+        return handle_update(args)
     elif args.command == "doctor":
         handle_doctor(args)
     elif args.command == "link-global":
@@ -534,6 +563,8 @@ def main(argv: List[str] = None):
         print_catalog()
     else:
         parser.print_help()
+
+    return 0
 
 
 if __name__ == "__main__":

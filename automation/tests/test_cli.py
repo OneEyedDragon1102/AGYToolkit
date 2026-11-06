@@ -94,7 +94,8 @@ class TestCLI(unittest.TestCase):
             with redirect_stdout(f):
                 main(["mcp", str(tmp_path), "--export-schemas", str(schema_dir)])
             out = f.getvalue()
-            self.assertIn("[AGYToolkit MCP] Exported 6 MCP tool schemas", out)
+            self.assertIn("[AGYToolkit MCP] Exported 7 MCP tool schemas", out)
+            self.assertTrue((schema_dir / "agy_update.json").exists())
             self.assertTrue((schema_dir / "agy_doctor.json").exists())
             self.assertTrue((schema_dir / "agy_bus_send.json").exists())
 

@@ -68,7 +68,7 @@ If running directly from the Python repository source without global packaging:
 
 ## 3. Tool Catalog Reference
 
-The MCP server exposes five native tools:
+The MCP server exposes seven native tools:
 
 ### `agy_doctor`
 * **Description**: Runs a diagnostic health check and governance audit on the environment.
@@ -111,6 +111,13 @@ The MCP server exposes five native tools:
   - `event_id` *(string, required)*: The unique ID of the event envelope to claim.
   - `claimer` *(string, required)*: Identifier of the claiming agent.
 * **Output**: Claimed event payload or error if already claimed.
+
+### `agy_update`
+* **Description**: Non-destructively synchronizes the workspace's skills, agents, and hooks from latest blueprints while preserving custom rules and memory.
+* **Arguments**:
+  - `dry_run` *(boolean, optional, default: `false`)*: Preview changes without modifying the filesystem.
+  - `force_rules` *(boolean, optional, default: `false`)*: Force refresh project rules (`GEMINI.md`, `AGENTS.md`) from templates.
+* **Output**: Formatted summary report of refreshed components.
 
 ---
 

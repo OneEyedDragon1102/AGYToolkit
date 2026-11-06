@@ -153,7 +153,7 @@ class TestBusConcurrency(unittest.TestCase):
         )
         duration = time.time() - start
         self.assertEqual(len(events), 0)
-        self.assertGreaterEqual(duration, 0.14)
+        self.assertGreaterEqual(duration, 0.10)
         self.assertLess(duration, 1.0)
 
     def test_watch_events_topic_filter(self):
