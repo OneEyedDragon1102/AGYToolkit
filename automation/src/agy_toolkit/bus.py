@@ -77,8 +77,9 @@ def publish_event(
 ) -> BusEvent:
     """Publish a structured event envelope to the volatile bus with atomic persistence."""
     bus_dir = _get_volatile_bus_dir(memory_dir)
-    event_id = f"evt_{datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
-    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    event_id = f"evt_{now_utc.strftime('%Y%m%d%H%M%S%f')}_{uuid.uuid4().hex[:8]}"
+    now_iso = now_utc.isoformat()
 
     event = BusEvent(
         id=event_id,
@@ -311,6 +312,7 @@ def watch_events(
         except OSError:
             candidate_files = []
 
+        batch_events: List[BusEvent] = []
         for file_path in candidate_files:
             stem = file_path.stem
             if stem in seen_ids:
@@ -338,12 +340,19 @@ def watch_events(
                     continue
 
                 seen_ids.add(stem)
-                yielded_count += 1
-                yield event
+                batch_events.append(event)
 
-                if stop_after is not None and yielded_count >= stop_after:
-                    return
+
+
+
             except (json.JSONDecodeError, OSError, KeyError):
                 continue
+
+        batch_events.sort(key=lambda e: (e.timestamp, e.id))
+        for event in batch_events:
+            yielded_count += 1
+            yield event
+            if stop_after is not None and yielded_count >= stop_after:
+                return
 
         time.sleep(poll_interval)
