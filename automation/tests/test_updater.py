@@ -1,6 +1,7 @@
-"""Unit tests for the AGYToolkit Downstream Project Updater."""
+"""Unit tests for the AGYToolkit Downstream Project Synchronizer / Updater."""
 
 import io
+import json
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -8,38 +9,40 @@ from pathlib import Path
 
 from agy_toolkit.cli import main
 from agy_toolkit.scaffolder import scaffold_project
-from agy_toolkit.updater import update_project, UpdateReport, format_update_report
+from agy_toolkit.updater import (
+    update_project,
+    format_update_report,
+    UpdateReport,
+)
 
 
 class TestUpdater(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.target = Path(self.temp_dir.name) / "test-repo"
-        self.target.mkdir(parents=True, exist_ok=True)
+        self.target = Path(self.temp_dir.name)
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def _scaffold_target(self):
+    def _scaffold_target(self, name="sync-sample-app", stack="node-ts", mode="feature"):
         return scaffold_project(
             target_path=self.target,
-            project_name="sample-downstream",
-            stack="node-ts",
-            mode="feature",
+            project_name=name,
+            stack=stack,
+            mode=mode,
         )
 
     def test_update_fails_on_nonexistent_directory(self):
-        non_existent = Path(self.temp_dir.name) / "does-not-exist"
-        report = update_project(non_existent)
+        fake_path = self.target / "does_not_exist"
+        report = update_project(fake_path)
         self.assertFalse(report.success)
-        self.assertTrue(any("does not exist" in err.lower() for err in report.errors))
+        self.assertTrue(any("does not exist" in e for e in report.errors))
 
     def test_update_fails_on_uninitialized_project(self):
-        empty_dir = Path(self.temp_dir.name) / "empty-repo"
-        empty_dir.mkdir(parents=True, exist_ok=True)
-        report = update_project(empty_dir)
+        # Empty directory without .agents
+        report = update_project(self.target)
         self.assertFalse(report.success)
-        self.assertTrue(any("not initialized" in err.lower() for err in report.errors))
+        self.assertTrue(any("not initialized with AGYToolkit" in e for e in report.errors))
 
     def test_update_refreshes_skills_and_agents(self):
         self._scaffold_target()
@@ -55,7 +58,7 @@ class TestUpdater(unittest.TestCase):
         self.assertTrue(report.success)
         self.assertEqual(report.skills_updated, 28)
         self.assertEqual(report.agents_updated, 15)
-        self.assertEqual(report.hooks_updated, 8)
+        self.assertEqual(report.hooks_updated, 10)
 
         # Verify restored
         self.assertNotEqual(skill_file.read_text(encoding="utf-8"), "CORRUPTED SKILL CONTENT")
@@ -176,3 +179,7 @@ class TestUpdater(unittest.TestCase):
         self.assertEqual(ret, 0)
         output = buf.getvalue()
         self.assertIn("DRY RUN", output)
+
+
+if __name__ == "__main__":
+    unittest.main()

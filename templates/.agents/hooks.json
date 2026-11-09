@@ -50,5 +50,18 @@
         ]
       }
     ]
+  },
+  "auto-compact-memory": {
+    "PostToolUse": [
+      {
+        "matcher": "write_file|edit_file|run_command",
+        "hooks": [
+          {
+            "command": "powershell -ExecutionPolicy Bypass -File ./hooks/auto-compact-memory.ps1",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
   }
 }

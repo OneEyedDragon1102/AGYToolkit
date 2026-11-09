@@ -123,5 +123,17 @@ class TestBranchRuleHook(unittest.TestCase):
         self.assertEqual(res.get("decision"), "allow")
 
 
+class TestAutoCompactMemoryHook(unittest.TestCase):
+    def test_allows_normal_tool_use(self):
+        payload = {
+            "toolCall": {
+                "name": "write_file",
+                "args": {"Path": "src/dummy.ts", "Content": "const a = 1;"},
+            }
+        }
+        res = run_powershell_hook("auto-compact-memory.ps1", payload)
+        self.assertEqual(res.get("decision"), "allow")
+
+
 if __name__ == "__main__":
     unittest.main()

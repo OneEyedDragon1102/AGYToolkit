@@ -71,6 +71,25 @@ class McpServer:
                 },
             },
             {
+                "name": "agy_memory_compact",
+                "description": "Auto-compact active session and archive oldest decisions when approaching memory thresholds.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "threshold": {
+                            "type": "number",
+                            "description": "Compaction threshold ratio (0.0 - 1.0, default: 0.85).",
+                            "default": 0.85,
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "Simulate compaction without writing changes.",
+                            "default": False,
+                        },
+                    },
+                },
+            },
+            {
                 "name": "agy_bus_send",
                 "description": "Publish a structured JSON event envelope to the volatile multi-agent IPC bus.",
                 "inputSchema": {
@@ -199,6 +218,19 @@ class McpServer:
                     memory_dir=self.mem_dir,
                 )
                 return f"Recorded decision: [{category}] {decision}", False
+
+            if name == "agy_memory_compact":
+                from agy_toolkit.memory import auto_compact_memory, format_compact_report
+
+                threshold = float(arguments.get("threshold", 0.85))
+                dry_run = bool(arguments.get("dry_run", False))
+                report = auto_compact_memory(
+                    memory_dir=self.mem_dir,
+                    threshold=threshold,
+                    workspace_root=self.workspace_root,
+                    dry_run=dry_run,
+                )
+                return format_compact_report(report), False
 
             if name == "agy_bus_send":
                 topic = arguments.get("topic")

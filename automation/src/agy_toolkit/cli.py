@@ -151,7 +151,6 @@ def handle_init(args):
     print("=" * 60)
 
 
-
 def handle_update(args) -> int:
     target = Path(args.path or ".").resolve()
     dry_run = getattr(args, "dry_run", False)
@@ -197,7 +196,6 @@ def handle_link_global(args):
     print("=" * 65)
 
     stats = link_global(mode=mode, dry_run=dry_run)
-
     print("\n Results:")
     print(f"   - Destination: {stats['config_dir']}")
     print(f"   - Skills mounted: {stats['skills_linked']}/28")
@@ -244,6 +242,23 @@ def handle_memory(args):
         decision = args.decision
         record_decision(category=category, decision=decision, memory_dir=target_dir)
         print(f"[AGYToolkit] Recorded decision under [{category}].")
+
+    elif action == "auto-compact":
+        from agy_toolkit.memory import auto_compact_memory, format_compact_report
+
+        ws = Path(args.path or ".").resolve()
+        threshold = getattr(args, "threshold", 0.85)
+        dry_run = getattr(args, "dry_run", False)
+        report = auto_compact_memory(
+            memory_dir=target_dir,
+            threshold=threshold,
+            workspace_root=ws,
+            dry_run=dry_run,
+        )
+        if getattr(args, "json", False):
+            print(json.dumps(report.to_dict(), indent=2))
+        else:
+            print(format_compact_report(report))
 
 
 def handle_bus(args):
@@ -436,6 +451,12 @@ def main(argv: List[str] = None):
     mem_record.add_argument("--category", required=True, help="Decision category (e.g., ARCH, SEC, API)")
     mem_record.add_argument("--decision", required=True, help="Binding architectural decision statement")
 
+    mem_compact = mem_sub.add_parser("auto-compact", help="Auto-compact session and archive oldest decisions")
+    mem_compact.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    mem_compact.add_argument("--threshold", type=float, default=0.85, help="Usage threshold ratio (default: 0.85)")
+    mem_compact.add_argument("--dry-run", action="store_true", help="Simulate compaction without writing")
+    mem_compact.add_argument("--json", action="store_true", help="Output compaction report as JSON")
+
     # bus subcommand
     bus_parser = subparsers.add_parser("bus", help="Interact with volatile multi-agent event bus")
     bus_sub = bus_parser.add_subparsers(dest="bus_action", required=True)
@@ -482,7 +503,7 @@ def main(argv: List[str] = None):
         "path",
         nargs="?",
         default=".",
-        help="Workspace root directory (default: current directory)",
+        help="Workspace root directory (default: current dir)",
     )
     mcp_parser.add_argument(
         "--export-schemas",
@@ -499,7 +520,7 @@ def main(argv: List[str] = None):
         "path",
         nargs="?",
         default=".",
-        help="Workspace root directory (default: current directory)",
+        help="Workspace root directory (default: current dir)",
     )
     pr_parser.add_argument(
         "--base",
