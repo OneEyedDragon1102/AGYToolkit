@@ -77,16 +77,43 @@ def print_skills():
     print("\n" + "=" * 75)
 
 
+def print_templates():
+    from agy_toolkit.scaffolder_stacks import list_available_templates
+
+    templates = list_available_templates()
+    print("=" * 75)
+    print(" [AGYToolkit] Turnkey Tech-Stack Production Boilerplate Templates")
+    print("=" * 75)
+    for t in templates:
+        name = t.get("name", "unknown")
+        lang = t.get("language", "")
+        framework = t.get("framework", "")
+        arch = t.get("architecture", "")
+        desc = t.get("description", "")
+        aliases = ", ".join(t.get("aliases", []))
+        print(f"\n* {name} [{lang} | {framework}]")
+        print(f"   Architecture: {arch}")
+        print(f"   Aliases:      {aliases}")
+        print(f"   Description:  {desc}")
+    print("\n" + "=" * 75)
+
+
 def handle_init(args):
+    if getattr(args, "list_templates", False):
+        print_templates()
+        return
+
     target = Path(args.path or ".").resolve()
     name = args.name or target.name
     stack = args.stack or "node-ts"
     mode = args.mode or "feature"
+    template = getattr(args, "template", None)
 
     print("=" * 60)
     print(f" [AGYToolkit] Initializing Governance for: {name}")
     print(f" Target: {target}")
-    print(f" Stack: {stack} | Mode: {mode.upper()}")
+    tmpl_info = f" | Template: {template}" if template else ""
+    print(f" Stack: {stack} | Mode: {mode.upper()}{tmpl_info}")
     print("=" * 60)
 
     res = scaffold_project(
@@ -94,6 +121,7 @@ def handle_init(args):
         project_name=name,
         stack=stack,
         mode=mode,
+        template=template,
     )
 
     print(f"\n Success! Workspace provisioned with:")
@@ -102,6 +130,8 @@ def handle_init(args):
     print(f"   - {res['hooks_installed']} lifecycle hook scripts in .agents/hooks/")
     print(f"   - Active session memory initialized (gitignored)")
     print(f"   - GEMINI.md and AGENTS.md project rules generated")
+    if res.get("template"):
+        print(f"   - {res['template_files_count']} boilerplate files scaffolded from '{res['template']}'")
     print("\nNext step: Open this workspace in AGY to activate autonomous governance.")
     print("=" * 60)
 
@@ -292,6 +322,8 @@ def main(argv: List[str] = None):
     init_parser.add_argument("--name", help="Project name (defaults to target directory name)")
     init_parser.add_argument("--stack", choices=["spring-boot", "node-ts", "python"], default="node-ts", help="Primary tech stack")
     init_parser.add_argument("--mode", choices=["feature", "spike", "quickfix"], default="feature", help="Operational mode")
+    init_parser.add_argument("--template", help="Turnkey production starter template (e.g. spring-boot-hexagonal, node-clean-ts, python-fastapi)")
+    init_parser.add_argument("--list-templates", action="store_true", help="List available turnkey production stack templates")
 
     # update subcommand
     update_parser = subparsers.add_parser("update", help="Update skills, agents, and hooks in an existing downstream repository")
@@ -413,6 +445,11 @@ def main(argv: List[str] = None):
         action="store_true",
         help="List all 28 progressive SDLC skills in AGYToolkit",
     )
+    parser.add_argument(
+        "--list-templates",
+        action="store_true",
+        help="List available turnkey production stack templates",
+    )
 
     args = parser.parse_args(argv)
 
@@ -436,6 +473,8 @@ def main(argv: List[str] = None):
         handle_mcp(args)
     elif args.command == "pr-review":
         handle_pr_review(args)
+    elif args.list_templates:
+        print_templates()
     elif args.list_skills:
         print_skills()
     elif args.list_agents:
