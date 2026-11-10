@@ -1,6 +1,6 @@
 # AGYToolkit Native Antigravity MCP Server (`agy-mcp`)
 
-The **AGYToolkit MCP Server** provides native Model Context Protocol (MCP) integration over standard input/output (`stdio`), exposing core toolkit governance, dual-tier memory budgets, and multi-agent volatile IPC capabilities directly to Google Antigravity agents.
+The **AGYToolkit MCP Server** provides native Model Context Protocol (MCP) integration over standard input/output (`stdio`), exposing core toolkit governance, dual-tier memory budgets, dynamic memory auto-compaction, and multi-agent volatile IPC capabilities directly to Google Antigravity agents.
 
 ---
 
@@ -20,8 +20,9 @@ flowchart TD
 
     subgraph FrameworkEngine [AGYToolkit Modules]
         Doctor[doctor.py: Diagnostic Health Auditor]
-        Memory[memory.py: Budget & Decision Registry]
+        Memory[memory.py: Budget, Decision Registry & Auto-Compactor]
         Bus[bus.py: Volatile IPC Event Bus]
+        Updater[updater.py: Downstream Synchronizer]
     end
 
     Agent <--> MCPClient
@@ -30,6 +31,7 @@ flowchart TD
     Dispatcher --> Doctor
     Dispatcher --> Memory
     Dispatcher --> Bus
+    Dispatcher --> Updater
 ```
 
 The MCP server is implemented entirely using the Python standard library with **zero external dependencies**, adhering to the official **MCP 2024-11-05** protocol specification.
@@ -68,7 +70,7 @@ If running directly from the Python repository source without global packaging:
 
 ## 3. Tool Catalog Reference
 
-The MCP server exposes seven native tools:
+The MCP server exposes eight native tools:
 
 ### `agy_doctor`
 * **Description**: Runs a diagnostic health check and governance audit on the environment.
@@ -87,6 +89,13 @@ The MCP server exposes seven native tools:
   - `decision` *(string, required)*: The architectural decision statement.
   - `category` *(string, optional, default: `"ARCH"`)*: Category prefix (e.g. `ARCH`, `GOV`, `DIST`, `BUS`, `TDD`).
 * **Output**: Confirmation message with recorded entry.
+
+### `agy_memory_compact`
+* **Description**: Evaluates active session and architectural decision budgets, archiving bloated snapshots and offloading oldest decisions to cold storage.
+* **Arguments**:
+  - `threshold` *(number, optional, default: `0.85`)*: Compaction threshold ratio (0.0 - 1.0) above which auto-compaction is triggered.
+  - `dry_run` *(boolean, optional, default: `false`)*: Preview compaction actions and byte projections without modifying files on disk.
+* **Output**: Formatted auto-compaction report detailing bytes before/after, archive paths, and runtime advice for AGY agents.
 
 ### `agy_bus_send`
 * **Description**: Publishes a structured JSON event envelope to the volatile multi-agent IPC bus.
@@ -136,11 +145,13 @@ agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
 ```
 Output:
 ```text
-[AGYToolkit MCP] Exported 6 MCP tool schemas to .../.agents/mcp/agy-toolkit
+[AGYToolkit MCP] Exported 8 MCP tool schemas to .../.agents/mcp/agy-toolkit
   * agy_doctor.json
   * agy_memory_status.json
   * agy_memory_record.json
+  * agy_memory_compact.json
   * agy_bus_send.json
   * agy_bus_read.json
   * agy_bus_claim.json
+  * agy_update.json
 ```

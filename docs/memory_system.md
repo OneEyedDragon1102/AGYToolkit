@@ -4,7 +4,7 @@
 
 In long-running autonomous development sessions, large context windows eventually encounter token exhaustion. When developers or agents execute `/compact` or when models truncate context, volatile knowledge (file touchpoints, decisions, active goals) is often erased, forcing agents to re-explore the codebase and repeat mistakes.
 
-AGYToolkit solves this through a **budget-governed, dual-tier memory system** coupled with an ephemeral volatile bus. This guarantees that sessions can be compacted with **zero context loss**.
+AGYToolkit solves this through a **budget-governed, dual-tier memory system** coupled with an ephemeral volatile bus and **dynamic auto-compaction engine**. This guarantees that sessions can be compacted with **zero context loss**.
 
 ---
 
@@ -22,11 +22,14 @@ flowchart TD
         Decisions["decisions.md<br/><b>3 KB Hard Budget</b><br/>(Committed Architectural Log)"]
         VolatileBus["volatile-bus/<br/><b>Ephemeral Dump Zone</b><br/>(Gitignored Large Payloads)"]
         Archive["sessions/<br/><b>Episodic Archives</b><br/>(Committed Chronological Milestones)"]
+        ADRArchive["docs/adr/<br/><b>Decisions History</b><br/>(Archived Decisions Register)"]
     end
 
     Agent -->|Updates on PostToolUse| ActiveSess
     Agent -->|Records Approved ADRs| Decisions
     Agent -->|Offloads >20 Line Logs| VolatileBus
+    ActiveSess -->|Auto-Compact >85% Budget| Archive
+    Decisions -->|FIFO Eviction >85% Budget| ADRArchive
     User -->|Executes /compact| Conversation
     ActiveSess -->|Reloaded on SessionStart| Agent
     Decisions -->|Reloaded on SessionStart| Agent
@@ -34,7 +37,7 @@ flowchart TD
 
 ---
 
-## The Four Tiers Explained
+## The Core Memory Tiers
 
 ### 1. `active-session.md` (Local Working Memory)
 - **Path**: `.agents/memory/active-session.md`
@@ -45,7 +48,8 @@ flowchart TD
   - Active Operational Mode (`FEATURE`, `SPIKE`, or `QUICKFIX`).
   - Active Touchpoints (the 3-5 files currently under modification).
   - Immediate Next Action.
-- **Enforcement**: Monitored by `context-budgeter` and validated during `PostToolUse` memory flush hooks. If the file exceeds 1024 bytes, non-essential lines are trimmed automatically.
+  - Open Blockers.
+- **Enforcement**: Monitored by `context-budgeter` and updated during `PostToolUse` memory flush hooks. If the file exceeds 1024 bytes, non-essential lines are trimmed automatically.
 
 ### 2. `decisions.md` (Project Architectural Memory)
 - **Path**: `.agents/memory/decisions.md`
@@ -56,7 +60,7 @@ flowchart TD
   - Pattern selections (e.g., Hexagonal Architecture, Zod schema validation).
   - Explicit trade-offs accepted.
   - Pointers to comprehensive ADR documents (`docs/adr/ADR-001-...`).
-- **Enforcement**: Only updated when decisions are reviewed or confirmed. Older decisions are summarized or offloaded to ADR documents when approaching the 3 KB threshold.
+- **Enforcement**: Only updated when decisions are reviewed or confirmed. Older decisions are automatically evicted via FIFO to `docs/adr/decisions-history.md` when approaching the 3 KB threshold.
 
 ### 3. `volatile-bus/` (Ephemeral Dump Zone & IPC)
 - **Path**: `.agents/memory/volatile-bus/`
@@ -70,7 +74,28 @@ flowchart TD
 - **Path**: `.agents/memory/sessions/`
 - **Git Status**: **Committed to Version Control**.
 - **Purpose**: Historical log of completed milestones.
-- **Protocol**: When a feature branch is merged or a major milestone is reached, `agy-toolkit memory flush` archives the active session state as a timestamped markdown file in `sessions/`, and `active-session.md` is reset to a clean baseline.
+- **Protocol**: When a feature branch is merged, `agy-toolkit memory flush` archives the active session state as a timestamped markdown file in `sessions/`, and `active-session.md` is reset to a clean baseline.
+
+---
+
+## Dynamic Memory Auto-Compaction & ADR Archival
+
+To prevent agents from crashing context windows or overflowing memory files, AGYToolkit includes an **autonomous auto-compaction engine**:
+
+### Compaction Mechanics
+1. **85% Capacity Threshold Rule**:
+   - `active-session.md` threshold: **870 bytes** (85% of 1,024 B).
+   - `decisions.md` threshold: **2,611 bytes** (85% of 3,072 B).
+2. **Active Session Pruning**:
+   - Creates a complete snapshot in `.agents/memory/sessions/YYYYMMDD_HHMMSS_session.md`.
+   - Extracts discrete structural state: `Active Goal`, `Current Branch`, `Active Agent`, `Immediate Next Step`, and `Open Blockers`.
+   - Clears accumulated modified files to `- None (archived to sessions/)`, reducing working memory back to ~250 bytes.
+   - Emits actionable guidance advising the agent to run `/compact`.
+3. **Decisions Register FIFO Eviction**:
+   - When `decisions.md` crosses 2,611 bytes, the oldest decision entries are evicted to `docs/adr/decisions-history.md` until memory usage drops to 60% of budget.
+   - Preserves all recent decisions in active working memory while retaining an auditable long-term architectural history.
+4. **Lifecycle Hook Enforcement**:
+   - [`.agents/hooks/auto-compact-memory.ps1`](../.agents/hooks/auto-compact-memory.ps1) and `.sh` execute automatically on `PostToolUse` for `write_file`, `edit_file`, and `run_command`.
 
 ---
 
@@ -81,11 +106,12 @@ When a conversation history grows and you run `/compact`:
 1. **Pre-Compaction**:
    - The agent ensures all recent architectural decisions are recorded in `.agents/memory/decisions.md`.
    - The active task and touched files are confirmed in `.agents/memory/active-session.md`.
+   - The auto-compactor verifies both files remain within budget.
 2. **Context Compaction**:
    - The LLM summarizer truncates conversational turns.
 3. **Post-Compaction Wakeup**:
    - The agent reads `active-session.md` and `decisions.md` (consuming less than 4 KB combined).
-   - The agent immediately knows the active branch, the touched files, and the next steps without needing to ask the user or search the repository.
+   - The agent immediately knows the active branch, touched files, and next steps without needing to re-explore the codebase.
 
 ---
 
@@ -100,6 +126,18 @@ agy-toolkit memory status
 
 # Output metrics in JSON format for automation
 agy-toolkit memory status --json
+
+# Trigger auto-compaction and ADR archival
+agy-toolkit memory auto-compact
+
+# Preview auto-compaction projections without modifying files on disk
+agy-toolkit memory auto-compact --dry-run
+
+# Output structured auto-compaction report as JSON
+agy-toolkit memory auto-compact --json
+
+# Override compaction threshold (e.g., 70% threshold)
+agy-toolkit memory auto-compact --threshold 0.70
 
 # Flush working memory and archive state into sessions/ directory
 agy-toolkit memory flush
@@ -122,6 +160,9 @@ agy-toolkit bus list
 # Read and consume events matching a specific topic
 agy-toolkit bus read --topic review --consume
 
+# Stream events in real time until timeout or completion
+agy-toolkit bus watch --topic review --timeout 30
+
 # Clear all volatile bus payloads
 agy-toolkit bus clear
 ```
@@ -137,6 +178,8 @@ Both memory budgets and the volatile bus can be manipulated programmatically:
 from pathlib import Path
 from agy_toolkit.memory import (
     check_memory_budgets,
+    auto_compact_memory,
+    format_compact_report,
     update_active_session,
     flush_active_session,
     record_decision,
@@ -147,6 +190,11 @@ mem_dir = Path(".agents/memory")
 # Check memory health
 budgets = check_memory_budgets(mem_dir)
 print(budgets["active_session"]["within_budget"])
+
+# Evaluate budgets and auto-compact if over 85% threshold
+report = auto_compact_memory(memory_dir=mem_dir, threshold=0.85, dry_run=False)
+if report.active_session_compacted or report.decisions_compacted:
+    print(format_compact_report(report))
 
 # Update active working context (enforces 1 KB cap)
 update_active_session(
@@ -175,6 +223,9 @@ from agy_toolkit.bus import (
     publish_event,
     read_event,
     list_events,
+    watch_events,
+    claim_event,
+    complete_claimed_event,
     consume_events,
     clear_bus,
 )
@@ -184,7 +235,7 @@ event = publish_event(
     topic="test-results",
     sender="tdd-specialist",
     recipient="orchestrator",
-    payload={"passed": 59, "failed": 0},
+    payload={"passed": 110, "failed": 0},
     ttl_seconds=3600,
 )
 
@@ -206,7 +257,7 @@ if claimed:
 
 ---
 
-## 5. Concurrency, Atomicity & Deadlock Prevention
+## Concurrency, Atomicity & Deadlock Prevention
 
 The AGYToolkit IPC event bus is designed for concurrent multi-agent swarm environments:
 
@@ -214,4 +265,3 @@ The AGYToolkit IPC event bus is designed for concurrent multi-agent swarm enviro
 2. **Lockless Architecture**: The event bus uses no blocking locks. Events are immutable once published.
 3. **Atomic Task Claiming**: Competing worker agents use `O_CREAT | O_EXCL` atomic claim files (`.claim`) to guarantee exactly one worker wins a task race with zero double-processing.
 4. **Deadlock Immunity**: All watchers require explicit `timeout_seconds`, eliminating indefinite blocking. Abandoned tickets expire cleanly via TTL thresholds.
-```
