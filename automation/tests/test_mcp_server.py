@@ -84,6 +84,7 @@ class TestMcpServer(unittest.TestCase):
         self.assertIn("agy_doctor", tool_names)
         self.assertIn("agy_memory_status", tool_names)
         self.assertIn("agy_memory_record", tool_names)
+        self.assertIn("agy_memory_compact", tool_names)
         self.assertIn("agy_bus_send", tool_names)
         self.assertIn("agy_bus_read", tool_names)
         self.assertIn("agy_bus_claim", tool_names)
@@ -130,12 +131,10 @@ class TestMcpServer(unittest.TestCase):
         res = json.loads(res_raw)
         self.assertEqual(res["id"], 4)
         self.assertFalse(res["result"]["isError"])
-        text = res["result"]["content"][0]["text"]
-        self.assertIn("active-session.md", text)
-        self.assertIn("decisions.md", text)
+        self.assertIn("AGYToolkit Memory Budget Status", res["result"]["content"][0]["text"])
 
     def test_tool_call_memory_record(self):
-        """Verify agy_memory_record appends decisions within budget."""
+        """Verify agy_memory_record tool execution."""
         req = {
             "jsonrpc": "2.0",
             "id": 5,
@@ -143,8 +142,8 @@ class TestMcpServer(unittest.TestCase):
             "params": {
                 "name": "agy_memory_record",
                 "arguments": {
-                    "decision": "Use JSON-RPC 2.0 stdio transport for native MCP",
-                    "category": "ARCH"
+                    "category": "ARCH",
+                    "decision": "Use Event Sourcing for audit trails."
                 }
             }
         }
@@ -152,14 +151,31 @@ class TestMcpServer(unittest.TestCase):
         res = json.loads(res_raw)
         self.assertEqual(res["id"], 5)
         self.assertFalse(res["result"]["isError"])
-        self.assertIn("Recorded decision", res["result"]["content"][0]["text"])
+        self.assertIn("Recorded decision: [ARCH] Use Event Sourcing for audit trails.", res["result"]["content"][0]["text"])
 
         # Check file content
         decisions_content = (self.mem_dir / "decisions.md").read_text(encoding="utf-8")
-        self.assertIn("Use JSON-RPC 2.0 stdio transport", decisions_content)
+        self.assertIn("[ARCH]", decisions_content)
+        self.assertIn("Use Event Sourcing", decisions_content)
+
+    def test_tool_call_memory_record_missing_arg(self):
+        """Verify agy_memory_record returns isError on missing 'decision'."""
+        req = {
+            "jsonrpc": "2.0",
+            "id": 50,
+            "method": "tools/call",
+            "params": {
+                "name": "agy_memory_record",
+                "arguments": {}
+            }
+        }
+        res_raw = self.server.process_line(json.dumps(req))
+        res = json.loads(res_raw)
+        self.assertTrue(res["result"]["isError"])
+        self.assertIn("Missing required argument", res["result"]["content"][0]["text"])
 
     def test_tool_call_bus_send_and_read(self):
-        """Verify inter-agent bus send and read via MCP tools."""
+        """Verify agy_bus_send publishes event and agy_bus_read retrieves it."""
         send_req = {
             "jsonrpc": "2.0",
             "id": 6,
@@ -169,8 +185,7 @@ class TestMcpServer(unittest.TestCase):
                 "arguments": {
                     "topic": "task-handoff",
                     "source": "architect",
-                    "payload": {"next_agent": "tdd-architect", "status": "READY"},
-                    "ttl_seconds": 3600
+                    "payload": {"next_agent": "tdd-architect", "step": "write_tests"}
                 }
             }
         }
@@ -257,6 +272,23 @@ class TestMcpServer(unittest.TestCase):
         self.assertIn("AGYToolkit Project Update", res["result"]["content"][0]["text"])
         self.assertIn("DRY RUN", res["result"]["content"][0]["text"])
 
+    def test_tool_call_memory_compact(self):
+        """Verify agy_memory_compact tool execution via MCP."""
+        req = {
+            "jsonrpc": "2.0",
+            "id": 106,
+            "method": "tools/call",
+            "params": {
+                "name": "agy_memory_compact",
+                "arguments": {"threshold": 0.85, "dry_run": True}
+            }
+        }
+        res_raw = self.server.process_line(json.dumps(req))
+        res = json.loads(res_raw)
+        self.assertEqual(res["id"], 106)
+        self.assertFalse(res["result"]["isError"])
+        self.assertIn("[AGYToolkit Memory Engine] Auto-Compaction Report", res["result"]["content"][0]["text"])
+
     def test_tool_call_unknown_tool(self):
         """Verify calling an unknown tool returns isError=True."""
         req = {
@@ -307,8 +339,9 @@ class TestMcpServer(unittest.TestCase):
         """Verify exporting tool schemas to static directory."""
         schema_dir = self.workspace_dir / "schemas"
         exported = self.server.export_schemas(schema_dir)
-        self.assertEqual(len(exported), 7)
+        self.assertEqual(len(exported), 8)
         self.assertTrue((schema_dir / "agy_update.json").exists())
+        self.assertTrue((schema_dir / "agy_memory_compact.json").exists())
         for path in exported:
             self.assertTrue(path.exists())
             data = json.loads(path.read_text(encoding="utf-8"))

@@ -2,8 +2,9 @@
 
 import datetime
 import json
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 MEMORY_DIR = Path(__file__).resolve().parent.parent.parent.parent / ".agents" / "memory"
 ACTIVE_SESSION_PATH = MEMORY_DIR / "active-session.md"
@@ -13,6 +14,27 @@ SESSIONS_DIR = MEMORY_DIR / "sessions"
 
 ACTIVE_SESSION_BYTE_CAP = 1024  # 1 KB (~250 tokens)
 DECISIONS_BYTE_CAP = 3072       # 3 KB (~750 tokens)
+
+ACTIVE_SESSION_CAP = ACTIVE_SESSION_BYTE_CAP
+DECISIONS_CAP = DECISIONS_BYTE_CAP
+
+
+@dataclass
+class CompactReport:
+    active_session_compacted: bool = False
+    active_session_bytes_before: int = 0
+    active_session_bytes_after: int = 0
+    decisions_compacted: bool = False
+    decisions_bytes_before: int = 0
+    decisions_bytes_after: int = 0
+    archived_session_path: Optional[str] = None
+    archived_adr_path: Optional[str] = None
+    decisions_evicted_count: int = 0
+    advice: List[str] = field(default_factory=list)
+    dry_run: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
 
 
 def ensure_memory_dirs(memory_dir: Optional[Path] = None) -> Path:
@@ -206,3 +228,185 @@ def check_memory_budgets(memory_dir: Optional[Path] = None) -> Dict[str, Dict]:
             "within_budget": decisions_bytes <= DECISIONS_BYTE_CAP,
         },
     }
+
+
+def auto_compact_memory(
+    memory_dir: Optional[Path] = None,
+    threshold: float = 0.85,
+    workspace_root: Optional[Path] = None,
+    dry_run: bool = False,
+) -> CompactReport:
+    """Evaluate memory budgets and auto-compact session and decisions if above threshold."""
+    target_dir = ensure_memory_dirs(memory_dir)
+    ws_root = workspace_root
+    if ws_root is None:
+        if target_dir.parent.name == ".agents":
+            ws_root = target_dir.parent.parent
+        else:
+            ws_root = Path.cwd()
+
+    report = CompactReport(dry_run=dry_run)
+
+    # 1. Active Session Compaction
+    active_path = target_dir / "active-session.md"
+    if active_path.exists():
+        content = active_path.read_text(encoding="utf-8")
+        bytes_before = len(content.encode("utf-8"))
+        report.active_session_bytes_before = bytes_before
+        report.active_session_bytes_after = bytes_before
+
+        session_threshold_limit = int(ACTIVE_SESSION_CAP * threshold)
+        if bytes_before > session_threshold_limit:
+            report.active_session_compacted = True
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            archive_file = target_dir / "sessions" / f"{timestamp}_session.md"
+            report.archived_session_path = str(archive_file)
+
+            if not dry_run:
+                archive_file.write_text(content, encoding="utf-8")
+
+            # Prune active session to essential state
+            goal = "None"
+            branch = "`main`"
+            agent = "`orchestrator`"
+            next_step = "Awaiting instructions"
+            blockers = "- None"
+
+            for line in content.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("- **Active Goal**:"):
+                    goal = stripped.split(":", 1)[1].strip()
+                elif stripped.startswith("- **Current Branch**:"):
+                    branch = stripped.split(":", 1)[1].strip()
+                elif stripped.startswith("- **Active Agent**:"):
+                    agent = stripped.split(":", 1)[1].strip()
+                elif stripped.startswith("- **Immediate Next Step**:"):
+                    next_step = stripped.split(":", 1)[1].strip()
+
+            if "## Open Blockers" in content:
+                parts = content.split("## Open Blockers", 1)
+                blockers_section = parts[1].strip()
+                blocker_lines = []
+                for bline in blockers_section.splitlines():
+                    if bline.strip().startswith("#"):
+                        break
+                    if bline.strip():
+                        blocker_lines.append(bline)
+                if blocker_lines:
+                    blockers = "\n".join(blocker_lines)
+
+            pruned_session = (
+                "# Active Session State\n\n"
+                f"- **Active Goal**: {goal}\n"
+                f"- **Current Branch**: {branch}\n"
+                f"- **Active Agent**: {agent}\n"
+                f"- **Immediate Next Step**: {next_step}\n\n"
+                "## Modified Files (Recent)\n"
+                "- None (archived to sessions/)\n\n"
+                "## Open Blockers\n"
+                f"{blockers}\n"
+            )
+            report.active_session_bytes_after = len(pruned_session.encode("utf-8"))
+            if not dry_run:
+                active_path.write_text(pruned_session, encoding="utf-8")
+
+            report.advice.append(
+                "Active session archived and pruned. Run /compact in AGY IDE to summarize context."
+            )
+
+    # 2. Decisions Compaction (FIFO eviction to docs/adr/decisions-history.md)
+    decisions_path = target_dir / "decisions.md"
+    if decisions_path.exists():
+        d_content = decisions_path.read_text(encoding="utf-8")
+        d_bytes_before = len(d_content.encode("utf-8"))
+        report.decisions_bytes_before = d_bytes_before
+        report.decisions_bytes_after = d_bytes_before
+
+        decisions_threshold_limit = int(DECISIONS_CAP * threshold)
+        if d_bytes_before > decisions_threshold_limit:
+            report.decisions_compacted = True
+            adr_dir = ws_root / "docs" / "adr"
+            adr_file = adr_dir / "decisions-history.md"
+            report.archived_adr_path = str(adr_file)
+
+            lines = d_content.splitlines()
+            header_lines = []
+            entry_chunks = []
+            current_chunk = []
+            in_entries = False
+
+            for line in lines:
+                if line.strip().startswith("- **"):
+                    in_entries = True
+                    if current_chunk:
+                        entry_chunks.append("\n".join(current_chunk))
+                        current_chunk = []
+                if in_entries:
+                    current_chunk.append(line)
+                else:
+                    header_lines.append(line)
+            if current_chunk:
+                entry_chunks.append("\n".join(current_chunk))
+
+            header_str = "\n".join(header_lines).strip()
+            if not header_str:
+                header_str = "# Binding Architectural Decisions Register"
+
+            target_bytes = int(DECISIONS_CAP * 0.60)
+            evicted_chunks = []
+            while entry_chunks and len(entry_chunks) > 1:
+                assembled = header_str + "\n\n" + "\n".join(entry_chunks) + "\n"
+                if len(assembled.encode("utf-8")) <= target_bytes:
+                    break
+                evicted_chunks.append(entry_chunks.pop(0))
+
+            assembled_decisions = header_str + "\n\n" + "\n".join(entry_chunks) + "\n"
+            report.decisions_evicted_count = len(evicted_chunks)
+            report.decisions_bytes_after = len(assembled_decisions.encode("utf-8"))
+
+            if evicted_chunks:
+                report.advice.append(
+                    f"Evicted {len(evicted_chunks)} older decisions to docs/adr/decisions-history.md. Run /compact in AGY IDE."
+                )
+                if not dry_run:
+                    adr_dir.mkdir(parents=True, exist_ok=True)
+                    if adr_file.exists():
+                        existing_adr = adr_file.read_text(encoding="utf-8").rstrip()
+                        new_adr = existing_adr + "\n" + "\n".join(evicted_chunks) + "\n"
+                    else:
+                        new_adr = (
+                            "# Architectural Decisions History (Archived)\n\n"
+                            "Historical decisions evicted from active working memory (.agents/memory/decisions.md).\n\n"
+                            + "\n".join(evicted_chunks)
+                            + "\n"
+                        )
+                    adr_file.write_text(new_adr, encoding="utf-8")
+                    decisions_path.write_text(assembled_decisions, encoding="utf-8")
+
+    return report
+
+
+def format_compact_report(report: CompactReport) -> str:
+    lines = [
+        "[AGYToolkit Memory Engine] Auto-Compaction Report",
+        "=" * 50,
+        f"Dry Run: {report.dry_run}",
+        f"Active Session Compacted: {report.active_session_compacted}",
+    ]
+    if report.active_session_compacted:
+        lines.append(f"  - Bytes Before: {report.active_session_bytes_before} B")
+        lines.append(f"  - Bytes After: {report.active_session_bytes_after} B")
+        if report.archived_session_path:
+            lines.append(f"  - Archive: {report.archived_session_path}")
+    lines.append(f"Decisions Compacted: {report.decisions_compacted}")
+    if report.decisions_compacted:
+        lines.append(f"  - Evicted Entries: {report.decisions_evicted_count}")
+        lines.append(f"  - Bytes Before: {report.decisions_bytes_before} B")
+        lines.append(f"  - Bytes After: {report.decisions_bytes_after} B")
+        if report.archived_adr_path:
+            lines.append(f"  - ADR Archive: {report.archived_adr_path}")
+    if report.advice:
+        lines.append("\nAdvice:")
+        for adv in report.advice:
+            lines.append(f"  - {adv}")
+    return "\n".join(lines)
