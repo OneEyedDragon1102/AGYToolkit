@@ -20,7 +20,7 @@ flowchart TD
     subgraph FrameworkCore [AGYToolkit Engine]
         CLI[AGYToolkit CLI: Scaffolder, Updater & Auditor]
         Gates[Strict Quality Gates: TDD, 80% Coverage, Anti-Bloat]
-        Memory[Budget-Governed Dual-Tier Memory System & Auto-Compaction]
+        Memory[Triple-Tier Memory System, Auto-Compaction & SQLite FTS5 Index]
         Bus[Volatile IPC Multi-Agent Event Bus]
     end
 
@@ -63,12 +63,13 @@ flowchart TD
    - Elimination of conversational AI chatter in source comments.
    - Strict prohibition of monolithic single-file dumps (>600 line limit).
 
-5. **Budget-Governed Memory Engine & Dynamic Auto-Compaction**:
+5. **Budget-Governed Triple-Tier Memory Engine & Permanent Knowledge Index**:
    - `active-session.md`: 1 KB hard budget for working context (gitignored).
    - `decisions.md`: 3 KB hard budget for committed architectural decisions.
    - `volatile-bus/`: Ephemeral dump zone and inter-agent IPC message bus (gitignored).
-   - **Autonomous Compaction**: When memory usage crosses 85% of capacity, the engine archives full snapshots to `.agents/memory/sessions/`, prunes working memory to essential goals/blockers, and evicts oldest decisions via FIFO to `docs/adr/decisions-history.md`.
-   - Guarantees seamless `/compact` operations with zero context loss.
+   - `knowledge.db`: Zero-dependency SQLite FTS5 full-text search engine indexing historical ADRs, sessions, and project rules for sub-millisecond retrieval.
+   - **Autonomous Compaction**: When memory usage crosses 85% of capacity, the engine archives full snapshots to `.agents/memory/sessions/`, prunes working memory to essential goals/blockers, evicts oldest decisions via FIFO to `docs/adr/decisions-history.md`, and automatically syncs the Tier 3 knowledge index.
+   - Guarantees seamless `/compact` operations with zero context loss and eliminates project amnesia.
 
 6. **Universal Project Initializer, Turnkey Starters & Health Diagnostics**:
    - `agy-toolkit init`: Bootstrap any downstream repository with complete governance in seconds.
@@ -126,6 +127,15 @@ agy-toolkit update ../my-service --dry-run
 # Check active session and decisions memory budgets
 agy-toolkit memory status
 
+# Full-text search across historical ADRs, archived sessions, and rules
+agy-toolkit memory search "Hexagonal Architecture"
+
+# Search with specific category filter (e.g. ARCH, BUS, SEC, SESSION)
+agy-toolkit memory search "volatile bus" --category BUS
+
+# Rebuild or sync the permanent SQLite FTS5 knowledge search index
+agy-toolkit memory reindex
+
 # Auto-compact active session and archive oldest decisions (85% threshold)
 agy-toolkit memory auto-compact
 
@@ -135,7 +145,7 @@ agy-toolkit memory auto-compact --dry-run
 # Flush active session and archive to sessions/
 agy-toolkit memory flush
 
-# Start native Antigravity MCP Server over stdio (16 native tools)
+# Start native Antigravity MCP Server over stdio (18 native tools)
 agy-toolkit mcp
 
 # Export static MCP tool schemas for Antigravity discovery
@@ -205,16 +215,16 @@ AGYToolkit/
 │       └── python-fastapi/         # Python 3.12+ / FastAPI / Pydantic v2 / pytest
 │
 ├── automation/                  # Framework CLI, core engines & verification
-│   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, scaffolder_stacks, memory, bus, doctor, linker, mcp, updater)
-│   └── tests/                   # 160 automated unit & verification tests
+│   ├── src/agy_toolkit/         # Core Python package (cli, knowledge, mcp_knowledge, scaffolder, scaffolder_stacks, memory, bus, doctor, linker, mcp, updater)
+│   └── tests/                   # 172 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide
-    ├── mcp_server.md            # Native Antigravity MCP Server setup & 16-tool reference
+    ├── mcp_server.md            # Native Antigravity MCP Server setup & 18-tool reference
     ├── ci_cd_governance.md      # CI/CD pipeline and PR review bot guide
     ├── specialist_agents.md     # In-depth reference for all 15 agents
     ├── skills_catalog.md        # Comprehensive catalog of all 28 skills
-    ├── memory_system.md         # Dual-tier memory engine, auto-compact & event bus
+    ├── memory_system.md         # Triple-tier memory engine, auto-compact, FTS5 knowledge search & event bus
     └── core_tools.md            # AGY tool definitions and parameter reference
 ```
 

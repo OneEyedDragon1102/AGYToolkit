@@ -46,6 +46,7 @@ Thumbs.db
 .agents/memory/active-session.md
 .agents/memory/volatile-bus/*
 !.agents/memory/volatile-bus/.gitkeep
+.agents/memory/knowledge.db*
 
 
 # Local Development Plans & Backlogs (Local-only, not committed)

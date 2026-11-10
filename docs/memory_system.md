@@ -4,7 +4,7 @@
 
 In long-running autonomous development sessions, large context windows eventually encounter token exhaustion. When developers or agents execute `/compact` or when models truncate context, volatile knowledge (file touchpoints, decisions, active goals) is often erased, forcing agents to re-explore the codebase and repeat mistakes.
 
-AGYToolkit solves this through a **budget-governed, dual-tier memory system** coupled with an ephemeral volatile bus and **dynamic auto-compaction engine**. This guarantees that sessions can be compacted with **zero context loss**.
+AGYToolkit solves this through a **budget-governed, triple-tier memory system** coupled with an ephemeral volatile bus, **dynamic auto-compaction engine**, and **permanent SQLite FTS5 knowledge search index**. This guarantees that sessions can be compacted with **zero context loss** and historical rationale is always searchable in sub-milliseconds.
 
 ---
 
@@ -17,12 +17,13 @@ flowchart TD
         User[User Interaction]
     end
 
-    subgraph MemoryTier [Memory Architecture .agents/memory/]
-        ActiveSess["active-session.md<br/><b>1 KB Hard Budget</b><br/>(Gitignored Working Memory)"]
-        Decisions["decisions.md<br/><b>3 KB Hard Budget</b><br/>(Committed Architectural Log)"]
-        VolatileBus["volatile-bus/<br/><b>Ephemeral Dump Zone</b><br/>(Gitignored Large Payloads)"]
+    subgraph MemoryTier [Triple-Tier Memory Architecture .agents/memory/]
+        ActiveSess["Tier 2: active-session.md<br/><b>1 KB Hard Budget</b><br/>(Gitignored Working Memory)"]
+        Decisions["Tier 2: decisions.md<br/><b>3 KB Hard Budget</b><br/>(Committed Architectural Log)"]
+        VolatileBus["Tier 1: volatile-bus/<br/><b>Ephemeral Dump Zone</b><br/>(Gitignored Large Payloads)"]
         Archive["sessions/<br/><b>Episodic Archives</b><br/>(Committed Chronological Milestones)"]
         ADRArchive["docs/adr/<br/><b>Decisions History</b><br/>(Archived Decisions Register)"]
+        KnowledgeDB["Tier 3: knowledge.db<br/><b>SQLite FTS5 Full-Text Index</b><br/>(Sub-Millisecond Semantic Search)"]
     end
 
     Agent -->|Updates on PostToolUse| ActiveSess
@@ -30,6 +31,10 @@ flowchart TD
     Agent -->|Offloads >20 Line Logs| VolatileBus
     ActiveSess -->|Auto-Compact >85% Budget| Archive
     Decisions -->|FIFO Eviction >85% Budget| ADRArchive
+    Archive -->|Auto-Index| KnowledgeDB
+    ADRArchive -->|Auto-Index| KnowledgeDB
+    Decisions -->|Auto-Index| KnowledgeDB
+    Agent -->|FTS5 Search Query| KnowledgeDB
     User -->|Executes /compact| Conversation
     ActiveSess -->|Reloaded on SessionStart| Agent
     Decisions -->|Reloaded on SessionStart| Agent
@@ -39,7 +44,15 @@ flowchart TD
 
 ## The Core Memory Tiers
 
-### 1. `active-session.md` (Local Working Memory)
+### 1. `volatile-bus/` (Tier 1: Ephemeral Dump Zone & IPC)
+- **Path**: `.agents/memory/volatile-bus/`
+- **Git Status**: **Strictly Gitignored** (except `.gitkeep`).
+- **Purpose**: Prevents prompt token depletion and serves as the multi-agent IPC message bus.
+- **Protocol**:
+  - Any compiler output, stack trace, test log, or subagent research dump exceeding **20 lines** must never be printed directly into the chat thread.
+  - Inter-agent messages and handoff events are written as structured JSON envelopes with configurable TTL expiration.
+
+### 2. `active-session.md` (Tier 2: Local Working Memory)
 - **Path**: `.agents/memory/active-session.md`
 - **Git Status**: **Strictly Gitignored**. Each developer or autonomous machine maintains its own active session state without causing merge conflicts.
 - **Budget**: **Hard ceiling of 1024 bytes (1 KB)**.
@@ -51,7 +64,7 @@ flowchart TD
   - Open Blockers.
 - **Enforcement**: Monitored by `context-budgeter` and updated during `PostToolUse` memory flush hooks. If the file exceeds 1024 bytes, non-essential lines are trimmed automatically.
 
-### 2. `decisions.md` (Project Architectural Memory)
+### 3. `decisions.md` (Tier 2: Project Architectural Memory)
 - **Path**: `.agents/memory/decisions.md`
 - **Git Status**: **Committed to Version Control**. Shared across all developers, agents, and CI pipelines.
 - **Budget**: **Hard ceiling of 3072 bytes (3 KB)**.
@@ -62,19 +75,16 @@ flowchart TD
   - Pointers to comprehensive ADR documents (`docs/adr/ADR-001-...`).
 - **Enforcement**: Only updated when decisions are reviewed or confirmed. Older decisions are automatically evicted via FIFO to `docs/adr/decisions-history.md` when approaching the 3 KB threshold.
 
-### 3. `volatile-bus/` (Ephemeral Dump Zone & IPC)
-- **Path**: `.agents/memory/volatile-bus/`
-- **Git Status**: **Strictly Gitignored** (except `.gitignore`).
-- **Purpose**: Prevents prompt token depletion and serves as the multi-agent IPC message bus.
-- **Protocol**:
-  - Any compiler output, stack trace, test log, or subagent research dump exceeding **20 lines** must never be printed directly into the chat thread.
-  - Inter-agent messages and handoff events are written as structured JSON envelopes with configurable TTL expiration.
-
-### 4. `sessions/` (Episodic Archive)
-- **Path**: `.agents/memory/sessions/`
-- **Git Status**: **Committed to Version Control**.
-- **Purpose**: Historical log of completed milestones.
-- **Protocol**: When a feature branch is merged, `agy-toolkit memory flush` archives the active session state as a timestamped markdown file in `sessions/`, and `active-session.md` is reset to a clean baseline.
+### 4. `knowledge.db` (Tier 3: Permanent Full-Text Knowledge Index)
+- **Path**: `.agents/memory/knowledge.db`
+- **Git Status**: **Strictly Gitignored**. Auto-compiled locally.
+- **Engine**: Zero-dependency SQLite **FTS5** (Full-Text Search 5) with BM25 ranking and porter stemmer tokenization.
+- **Indexed Corpora**:
+  - Active architectural decisions (`.agents/memory/decisions.md`).
+  - Historical evicted decisions (`docs/adr/decisions-history.md`).
+  - Archived sprint sessions (`.agents/memory/sessions/*.md`).
+  - Repository rules and documentation (`GEMINI.md`, `AGENTS.md`, `docs/*.md`).
+- **Performance**: Sub-millisecond keyword and phrase queries with snippet generation and category filtering.
 
 ---
 
@@ -94,38 +104,36 @@ To prevent agents from crashing context windows or overflowing memory files, AGY
 3. **Decisions Register FIFO Eviction**:
    - When `decisions.md` crosses 2,611 bytes, the oldest decision entries are evicted to `docs/adr/decisions-history.md` until memory usage drops to 60% of budget.
    - Preserves all recent decisions in active working memory while retaining an auditable long-term architectural history.
-4. **Lifecycle Hook Enforcement**:
+4. **Automatic Knowledge Index Sync**:
+   - When active sessions are archived or decisions are evicted, `auto_compact_memory()` automatically triggers `index_workspace()`, ensuring Tier 3 knowledge remains perfectly synchronized.
+5. **Lifecycle Hook Enforcement**:
    - [`.agents/hooks/auto-compact-memory.ps1`](../.agents/hooks/auto-compact-memory.ps1) and `.sh` execute automatically on `PostToolUse` for `write_file`, `edit_file`, and `run_command`.
-
----
-
-## Compaction Defense Protocol
-
-When a conversation history grows and you run `/compact`:
-
-1. **Pre-Compaction**:
-   - The agent ensures all recent architectural decisions are recorded in `.agents/memory/decisions.md`.
-   - The active task and touched files are confirmed in `.agents/memory/active-session.md`.
-   - The auto-compactor verifies both files remain within budget.
-2. **Context Compaction**:
-   - The LLM summarizer truncates conversational turns.
-3. **Post-Compaction Wakeup**:
-   - The agent reads `active-session.md` and `decisions.md` (consuming less than 4 KB combined).
-   - The agent immediately knows the active branch, touched files, and next steps without needing to re-explore the codebase.
 
 ---
 
 ## Memory & Event Bus CLI Commands
 
-AGYToolkit provides CLI commands to govern memory budgets and pass messages across agents without context pollution:
+AGYToolkit provides CLI commands to govern memory budgets, pass messages across agents, and execute full-text knowledge searches:
 
-### Memory Governance
+### Memory Governance & Knowledge Search
 ```bash
 # Check current memory usage against hard caps (1 KB active-session / 3 KB decisions)
 agy-toolkit memory status
 
-# Output metrics in JSON format for automation
-agy-toolkit memory status --json
+# Full-text search across historical ADRs, sessions, and documentation
+agy-toolkit memory search "Hexagonal Architecture"
+
+# Search with specific category filter (e.g. ARCH, BUS, SEC, SESSION)
+agy-toolkit memory search "volatile bus" --category BUS
+
+# Output search hits in JSON format for agent pipelines
+agy-toolkit memory search "rate limiting" --json
+
+# Rebuild or sync the SQLite FTS5 knowledge search index
+agy-toolkit memory reindex
+
+# Force full re-index of all documentation and history
+agy-toolkit memory reindex --force
 
 # Trigger auto-compaction and ADR archival
 agy-toolkit memory auto-compact
@@ -133,17 +141,8 @@ agy-toolkit memory auto-compact
 # Preview auto-compaction projections without modifying files on disk
 agy-toolkit memory auto-compact --dry-run
 
-# Output structured auto-compaction report as JSON
-agy-toolkit memory auto-compact --json
-
-# Override compaction threshold (e.g., 70% threshold)
-agy-toolkit memory auto-compact --threshold 0.70
-
 # Flush working memory and archive state into sessions/ directory
 agy-toolkit memory flush
-
-# Flush working memory without archiving
-agy-toolkit memory flush --no-archive
 
 # Record a binding architectural decision
 agy-toolkit memory record --category ARCH --decision "Spring Boot microservices must use Hexagonal Architecture."
@@ -169,9 +168,36 @@ agy-toolkit bus clear
 
 ---
 
+## Native Model Context Protocol (MCP) Tools
+
+Specialist agents query memory and search long-term architectural knowledge using native MCP tools over standard I/O:
+
+* `agy_memory_search(query: str, category: Optional[str] = None, limit: int = 5)`: Returns ranked search hits with snippet provenance.
+* `agy_memory_reindex(force: bool = False)`: Re-indexes workspace documents.
+* `agy_memory_status()`: Checks active budget consumption.
+* `agy_memory_record(decision: str, category: str = "ARCH")`: Records new architectural decisions within budget.
+* `agy_memory_compact(threshold: float = 0.85, dry_run: bool = False)`: Executes auto-compaction.
+
+---
+
 ## Programmatic Python API
 
-Both memory budgets and the volatile bus can be manipulated programmatically:
+### Knowledge Search (`agy_toolkit.knowledge`)
+```python
+from pathlib import Path
+from agy_toolkit.knowledge import search_knowledge, index_workspace, get_knowledge_stats
+
+ws = Path.cwd()
+
+# Sync knowledge index
+report = index_workspace(ws)
+print(f"Indexed {report.indexed_documents} documents in {report.elapsed_ms} ms")
+
+# Search historical decisions and sessions
+results = search_knowledge(ws, query="lease timeout", category="BUS", limit=5)
+for r in results:
+    print(f"[{r.category}] {r.title} ({r.source_file}): {r.snippet}")
+```
 
 ### Memory Operations (`agy_toolkit.memory`)
 ```python
@@ -195,73 +221,4 @@ print(budgets["active_session"]["within_budget"])
 report = auto_compact_memory(memory_dir=mem_dir, threshold=0.85, dry_run=False)
 if report.active_session_compacted or report.decisions_compacted:
     print(format_compact_report(report))
-
-# Update active working context (enforces 1 KB cap)
-update_active_session(
-    goal="Implement payment webhook",
-    branch="feature/payment-webhook",
-    active_agent="node-ts-engineer",
-    modified_files=["src/webhook.ts", "src/validator.ts"],
-    next_step="Write unit tests",
-    memory_dir=mem_dir,
-)
-
-# Record an architectural decision (enforces 3 KB cap with FIFO eviction)
-record_decision(
-    category="SECURITY",
-    decision="Validate webhook HMAC SHA-256 signatures before parsing payload.",
-    memory_dir=mem_dir,
-)
-
-# Flush active session to archive
-flush_active_session(archive=True, memory_dir=mem_dir)
 ```
-
-### Event Bus Operations (`agy_toolkit.bus`)
-```python
-from agy_toolkit.bus import (
-    publish_event,
-    read_event,
-    list_events,
-    watch_events,
-    claim_event,
-    complete_claimed_event,
-    consume_events,
-    clear_bus,
-)
-
-# Publish structured event envelope with 1-hour TTL
-event = publish_event(
-    topic="test-results",
-    sender="tdd-specialist",
-    recipient="orchestrator",
-    payload={"passed": 110, "failed": 0},
-    ttl_seconds=3600,
-)
-
-# List active non-expired events for orchestrator
-events = list_events(recipient="orchestrator")
-
-# Consume events matching topic
-results = consume_events(topic="test-results")
-
-# Stream events in real-time until timeout or count reached
-for evt in watch_events(topic="test-results", timeout_seconds=10.0):
-    print(f"Received event: {evt.id}")
-
-# Atomically claim an event (prevents double consumption by competing agents)
-claimed = claim_event(event.id, claimer="orchestrator")
-if claimed:
-    complete_claimed_event(event.id, claimer="orchestrator")
-```
-
----
-
-## Concurrency, Atomicity & Deadlock Prevention
-
-The AGYToolkit IPC event bus is designed for concurrent multi-agent swarm environments:
-
-1. **Atomic File Staging**: Publishers write to `.tmp_<uuid>` before invoking atomic `os.replace()`, preventing partial reads or `JSONDecodeError` torn data.
-2. **Lockless Architecture**: The event bus uses no blocking locks. Events are immutable once published.
-3. **Atomic Task Claiming**: Competing worker agents use `O_CREAT | O_EXCL` atomic claim files (`.claim`) to guarantee exactly one worker wins a task race with zero double-processing.
-4. **Deadlock Immunity**: All watchers require explicit `timeout_seconds`, eliminating indefinite blocking. Abandoned tickets expire cleanly via TTL thresholds.
