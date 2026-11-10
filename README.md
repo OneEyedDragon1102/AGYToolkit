@@ -18,9 +18,9 @@ flowchart TD
     end
 
     subgraph FrameworkCore [AGYToolkit Engine]
-        CLI[AGYToolkit CLI: Scaffolder & Auditor]
+        CLI[AGYToolkit CLI: Scaffolder, Updater & Auditor]
         Gates[Strict Quality Gates: TDD, 80% Coverage, Anti-Bloat]
-        Memory[Budget-Governed Dual-Tier Memory System]
+        Memory[Budget-Governed Dual-Tier Memory System & Auto-Compaction]
         Bus[Volatile IPC Multi-Agent Event Bus]
     end
 
@@ -55,21 +55,24 @@ flowchart TD
 
 3. **Lifecycle Hooks (`hooks.json`)**:
    - Automated runtime gates executed before and after tool calls (`PreToolUse`, `PostToolUse`, `SessionStart`).
-   - Hard blocks on direct commits to `main`, unapproved file modifications, and failing test runs.
+   - Hard blocks on direct commits to `main`, unapproved file modifications, monolithic code dumps, and failing test runs.
+   - Background file-touch tracking and threshold-based auto-compaction on `PostToolUse`.
 
 4. **Anti-Bloat Sentinel**:
    - Zero emojis in production code, comments, or log strings.
    - Elimination of conversational AI chatter in source comments.
    - Strict prohibition of monolithic single-file dumps (>600 line limit).
 
-5. **Budget-Governed Memory Engine & Event Bus**:
+5. **Budget-Governed Memory Engine & Dynamic Auto-Compaction**:
    - `active-session.md`: 1 KB hard budget for working context (gitignored).
    - `decisions.md`: 3 KB hard budget for committed architectural decisions.
    - `volatile-bus/`: Ephemeral dump zone and inter-agent IPC message bus (gitignored).
+   - **Autonomous Compaction**: When memory usage crosses 85% of capacity, the engine archives full snapshots to `.agents/memory/sessions/`, prunes working memory to essential goals/blockers, and evicts oldest decisions via FIFO to `docs/adr/decisions-history.md`.
    - Guarantees seamless `/compact` operations with zero context loss.
 
-6. **Universal Project Initializer & Health Diagnostics**:
+6. **Universal Project Initializer, Updater & Health Diagnostics**:
    - `agy-toolkit init`: Bootstrap any downstream repository with complete governance in seconds.
+   - `agy-toolkit update`: Non-destructively refresh skills, agents, and hooks in existing workspaces while preserving custom rules and memory.
    - `agy-toolkit doctor`: Deep environment and workspace compliance auditor.
 
 ---
@@ -105,14 +108,20 @@ agy-toolkit update ../my-service --dry-run
 # Check active session and decisions memory budgets
 agy-toolkit memory status
 
-# Start native Antigravity MCP Server over stdio
+# Auto-compact active session and archive oldest decisions (85% threshold)
+agy-toolkit memory auto-compact
+
+# Preview auto-compaction projections without writing
+agy-toolkit memory auto-compact --dry-run
+
+# Flush active session and archive to sessions/
+agy-toolkit memory flush
+
+# Start native Antigravity MCP Server over stdio (8 native tools)
 agy-toolkit mcp
 
 # Export static MCP tool schemas for Antigravity discovery
 agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
-
-# Flush active session and archive to sessions/
-agy-toolkit memory flush
 
 # Publish inter-agent event to volatile bus
 agy-toolkit bus send --topic review --sender code-reviewer --recipient orchestrator --payload '{"status": "PASS"}'
@@ -156,16 +165,16 @@ AGYToolkit/
 │       └── AGENTS.md.template   # Injected agent instructions
 │
 ├── automation/                  # Framework CLI, core engines & verification
-│   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, bus, doctor, linker, mcp)
-│   └── tests/                   # 88 automated unit & verification tests
+│   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, bus, doctor, linker, mcp, updater)
+│   └── tests/                   # 110 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide
-    ├── mcp_server.md            # Native Antigravity MCP Server setup & tool reference
+    ├── mcp_server.md            # Native Antigravity MCP Server setup & 8-tool reference
     ├── ci_cd_governance.md      # CI/CD pipeline and PR review bot guide
     ├── specialist_agents.md     # In-depth reference for all 15 agents
     ├── skills_catalog.md        # Comprehensive catalog of all 28 skills
-    ├── memory_system.md         # Architecture of the dual-tier memory engine & event bus
+    ├── memory_system.md         # Dual-tier memory engine, auto-compact & event bus
     └── core_tools.md            # AGY tool definitions and parameter reference
 ```
 
@@ -175,13 +184,8 @@ AGYToolkit/
 
 - [Getting Started Guide](docs/getting_started.md)
 - [Native Antigravity MCP Server](docs/mcp_server.md)
+- [Memory System & Auto-Compaction](docs/memory_system.md)
 - [CI/CD Governance & PR Review Bot](docs/ci_cd_governance.md)
 - [Specialist Agents Reference](docs/specialist_agents.md)
 - [Progressive Skills Catalog](docs/skills_catalog.md)
-- [Memory System Architecture](docs/memory_system.md)
-- [Core Tool Catalog](docs/core_tools.md)
-
----
-
-## License
-MIT
+- [Core Tools Reference](docs/core_tools.md)

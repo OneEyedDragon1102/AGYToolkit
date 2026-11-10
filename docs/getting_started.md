@@ -142,9 +142,9 @@ my-service/
    - TDD execution verifies tests before code.
    - `anti-bloat-check` blocks emojis, narrative comments, and monolithic files (>600 lines).
    - `code-reviewer` reviews staged diffs.
-6. **Compaction Defense**:
-   - When the context window fills, running `/compact` retains all decisions and working state cleanly because volatile data has been offloaded to `.agents/memory/volatile-bus/`.
-
+6. **Compaction Defense & Auto-Compaction**:
+   - On `PostToolUse`, `auto-compact-memory.ps1` evaluates budget thresholds. When approaching limits (>85%), active sessions are archived to `sessions/` and oldest decisions are evicted to `docs/adr/decisions-history.md`.
+   - Running `/compact` retains all decisions and working state cleanly because volatile data has been offloaded to `.agents/memory/volatile-bus/`.
 
 ---
 
@@ -174,10 +174,19 @@ agy-toolkit link-global --dry-run
 ```
 
 ### 3. Memory & Event Bus Management (`memory` & `bus`)
-Inspect memory budgets, flush active session context, and pass structured inter-agent messages:
+Inspect memory budgets, flush active session context, auto-compact memory, and pass structured inter-agent messages:
 ```bash
 # Check memory budget metrics
 agy-toolkit memory status
+
+# Auto-compact working session and archive oldest decisions (85% threshold)
+agy-toolkit memory auto-compact
+
+# Preview auto-compaction and projections without writing
+agy-toolkit memory auto-compact --dry-run
+
+# Output auto-compaction report in JSON format
+agy-toolkit memory auto-compact --json
 
 # Flush working memory and archive state to sessions/
 agy-toolkit memory flush
@@ -190,12 +199,15 @@ agy-toolkit bus send --topic review --sender code-reviewer --recipient orchestra
 
 # List active events on the volatile bus
 agy-toolkit bus list
+
+# Stream events in real-time until timeout or completion
+agy-toolkit bus watch --topic review --timeout 30
 ```
 
 ### 4. Native Antigravity MCP Server (`mcp`)
 Run the standard I/O JSON-RPC Model Context Protocol (MCP) server or export static schemas:
 ```bash
-# Start native Antigravity MCP server over stdio
+# Start native Antigravity MCP server over stdio (8 native tools)
 agy-toolkit mcp
 
 # Export static tool schemas for auto-discovery
@@ -203,4 +215,3 @@ agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
 ```
 
 For configuration details and tool parameter schemas, refer to the [Native Antigravity MCP Server Guide](mcp_server.md).
-```

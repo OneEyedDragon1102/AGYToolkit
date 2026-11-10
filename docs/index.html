@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGYToolkit - Sovereign Multi-Agent AI Development Framework</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+  <header>
+    <div class="brand-title">
+      <span>AGYToolkit</span>
+      <span class="brand-badge">Sovereign Multi-Agent OS</span>
+    </div>
+    <div class="header-meta">
+      <div class="status-pill">
+        <span class="status-indicator" id="health-indicator"></span>
+        <span id="health-text">INITIALIZING</span>
+      </div>
+      <span style="font-size:0.8rem; color:var(--text-muted);" id="connection-status">Connecting...</span>
+    </div>
+  </header>
+
+  <nav class="subnav">
+    <a href="#cockpit" class="active">Cockpit HUD</a>
+    <a href="#agents">Specialist Swarm (15)</a>
+    <a href="#skills">Skills Library (28)</a>
+    <a href="#playbook">Operator Playbook & Guidelines</a>
+    <a href="#importer">JSON Diagnostics Importer</a>
+  </nav>
+
+  <main class="container">
+
+    <!-- COCKPIT HUD -->
+    <section id="cockpit" class="section-header">
+      <h2>Operational Cockpit HUD</h2>
+      <p>Real-time telemetry of host toolchains, governance gates, dual-tier memory budgets, and multi-agent event bus.</p>
+      <div style="font-size:0.85rem; color:var(--accent-cyan); margin-top:4px;" id="workspace-label">Scanning local workspace...</div>
+    </section>
+
+    <div class="grid-4">
+      <!-- Memory Card: Active Session -->
+      <div class="card">
+        <div class="card-title">Active Session Memory</div>
+        <div class="gauge-wrapper">
+          <div class="gauge-labels">
+            <span>Budget</span>
+            <span id="act-mem-bytes">0 / 1024 B</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="act-mem-bar" style="width: 0%;"></div>
+          </div>
+          <div style="text-align:right; font-size:0.75rem; color:var(--text-muted); margin-top:4px;" id="act-mem-pct">0.0%</div>
+        </div>
+        <div class="list-item-row">
+          <span>Snapshot Archives</span>
+          <strong id="session-archives-count">0</strong>
+        </div>
+      </div>
+
+      <!-- Memory Card: Decisions Register -->
+      <div class="card">
+        <div class="card-title">Decisions Register (ADR)</div>
+        <div class="gauge-wrapper">
+          <div class="gauge-labels">
+            <span>Budget</span>
+            <span id="dec-mem-bytes">0 / 3072 B</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="dec-mem-bar" style="width: 0%;"></div>
+          </div>
+          <div style="text-align:right; font-size:0.75rem; color:var(--text-muted); margin-top:4px;" id="dec-mem-pct">0.0%</div>
+        </div>
+        <div class="list-item-row">
+          <span>Evicted ADR History</span>
+          <strong id="adr-history-count">0</strong>
+        </div>
+      </div>
+
+      <!-- Volatile IPC Event Bus -->
+      <div class="card">
+        <div class="card-title">Volatile IPC Event Bus</div>
+        <div class="list-item-row" style="margin-top:12px;">
+          <span>Active Envelopes</span>
+          <strong id="bus-active-count">0</strong>
+        </div>
+        <div class="list-item-row">
+          <span>Claimed Tickets</span>
+          <strong id="bus-claimed-count">0</strong>
+        </div>
+        <div class="list-item-row">
+          <span>Atomic Claim Lock</span>
+          <span class="badge-pass">O_CREAT | O_EXCL</span>
+        </div>
+      </div>
+
+      <!-- Autonomous Agent Matrix -->
+      <div class="card">
+        <div class="card-title">Swarm Readiness</div>
+        <div class="list-item-row" style="margin-top:12px;">
+          <span>Universal Specialists</span>
+          <strong style="color:var(--accent-cyan);">15 / 15 Registered</strong>
+        </div>
+        <div class="list-item-row">
+          <span>Progressive Skills</span>
+          <strong style="color:var(--accent-green);">28 / 28 Mounted</strong>
+        </div>
+        <div class="list-item-row">
+          <span>Native MCP Tools</span>
+          <strong style="color:var(--accent-yellow);">8 Tools Online</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolchains & Governance Split -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Host Toolchains & Environments</div>
+        <div id="toolchains-list">
+          <div style="color:var(--text-muted); font-size:0.85rem;">Scanning host runtimes...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Governance & Anti-Bloat Gates</div>
+        <div id="governance-list">
+          <div style="color:var(--text-muted); font-size:0.85rem;">Validating governance rules...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPECIALIST SUBAGENT MATRIX -->
+    <section id="agents" class="section-header" style="margin-top:48px;">
+      <h2>Universal 15-Specialist Subagents Swarm</h2>
+      <p>Single Responsibility Principle agents operating under explicit workspace isolation tiers.</p>
+      <div style="margin-top:14px; max-width:400px;">
+        <input type="text" id="agent-search" placeholder="Filter agents by name, role, or description..." oninput="filterAgents()" style="width:100%; padding:10px 14px; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-main); border-radius:6px; font-family:var(--font-sans);">
+      </div>
+    </section>
+
+    <div class="agent-grid" id="agents-container"></div>
+
+    <!-- PROGRESSIVE SKILLS CATALOG -->
+    <section id="skills" class="section-header" style="margin-top:56px;">
+      <h2>28 Progressive SDLC Skills Library</h2>
+      <p>Dynamic on-demand skills organized across 5 engineering tracks to maintain zero idle token footprint.</p>
+    </section>
+
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="color:var(--accent-cyan); font-size:1.05rem; margin-bottom:12px;">Track A: Planning & Architecture (6 Skills)</h3>
+        <ul style="list-style:none; font-size:0.9rem; line-height:1.8;">
+          <li>• <strong>adr-architect</strong>: Architecture decision records with trade-off matrices</li>
+          <li>• <strong>plan-approval-gate</strong>: Implementation plan authoring and user sign-off gates</li>
+          <li>• <strong>task-decomposer</strong>: Atomic user epic decomposition</li>
+          <li>• <strong>context-budgeter</strong>: Token budget accounting and volatile offloading</li>
+          <li>• <strong>telemetry-logger</strong>: Structured multi-agent execution logging</li>
+          <li>• <strong>handbook-enforcer</strong>: Guidelines and coding standard compliance</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3 style="color:var(--accent-green); font-size:1.05rem; margin-bottom:12px;">Track B: TDD & Implementation (7 Skills)</h3>
+        <ul style="list-style:none; font-size:0.9rem; line-height:1.8;">
+          <li>• <strong>tdd-spring-boot</strong>: Red-Green-Refactor cycles for Java 23 / Spring Boot</li>
+          <li>• <strong>tdd-node-ts</strong>: Isolated unit and mock runner for Node.js / TypeScript</li>
+          <li>• <strong>tdd-python</strong>: Isolated Python 3.12 unittest execution</li>
+          <li>• <strong>spring-service-generator</strong>: Hexagonal Architecture ports and adapters</li>
+          <li>• <strong>node-mcp-builder</strong>: Antigravity MCP Server and tool schema authoring</li>
+          <li>• <strong>ui-component-builder</strong>: Accessible, responsive web components</li>
+          <li>• <strong>refactor-cleaner</strong>: Structural modularization enforcing the &lt;600 line limit</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3 style="color:var(--accent-yellow); font-size:1.05rem; margin-bottom:12px;">Track C: Review & Quality Gates (6 Skills)</h3>
+        <ul style="list-style:none; font-size:0.9rem; line-height:1.8;">
+          <li>• <strong>code-reviewer</strong>: Production-grade code review on git diffs</li>
+          <li>• <strong>anti-bloat-linter</strong>: Zero emoji, monolithic file, and chatter auditing</li>
+          <li>• <strong>security-auditor</strong>: Credentials, OWASP vulnerabilities, and CVE scanner</li>
+          <li>• <strong>coverage-verifier</strong>: Mandatory 80%+ test coverage gate</li>
+          <li>• <strong>concurrency-auditor</strong>: Multi-threaded race condition and lock inspection</li>
+          <li>• <strong>api-contract-checker</strong>: Schema compatibility and DTO contract verification</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3 style="color:#b388ff; font-size:1.05rem; margin-bottom:12px;">Track D & E: CI/CD & Meta-Framework (9 Skills)</h3>
+        <ul style="list-style:none; font-size:0.9rem; line-height:1.8;">
+          <li>• <strong>commit-craft</strong>: Atomic Conventional Commits authoring</li>
+          <li>• <strong>branch-manager</strong>: Feature branch workflows and isolation</li>
+          <li>• <strong>selective-stager</strong>: Granular staging and sign-off verification</li>
+          <li>• <strong>release-packager</strong>: SemVer calculation and changelog packaging</li>
+          <li>• <strong>ci-pipeline-validator</strong>: GitHub Actions matrix validation</li>
+          <li>• <strong>agy-inspector</strong>: Audit AGY tools, skills, rules, and MCP servers</li>
+          <li>• <strong>skill-author</strong>: Dynamic domain skill authoring on demand</li>
+          <li>• <strong>agent-author</strong>: Specialist subagent authoring on demand</li>
+          <li>• <strong>workspace-doctor</strong>: Toolchain diagnostics and environment verification</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- OPERATOR PLAYBOOK & GUIDELINES -->
+    <section id="playbook" class="section-header" style="margin-top:56px;">
+      <h2>Operator Playbook & Usage Guidelines</h2>
+      <p>Standard operating procedures for managing, scaffolding, and running autonomous agent teams with AGYToolkit.</p>
+    </section>
+
+    <div class="playbook-step">
+      <h3>1. Machine-Wide Installation & Global Mounting</h3>
+      <p>Mount all 28 skills and 15 agents into your global Antigravity config directory (<code>~/.gemini/config/</code>) so any workspace opened in AGY automatically discovers them:</p>
+      <div class="code-box">agy-toolkit link-global</div>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-top:6px;">Use <code>agy-toolkit link-global --dry-run</code> to preview symlinks and copied blueprints before writing.</p>
+    </div>
+
+    <div class="playbook-step">
+      <h3>2. Scaffolding Governance into Downstream Projects</h3>
+      <p>Provision the complete <code>.agents/</code> runtime, memory system, lifecycle hooks, and project rules into any target repository:</p>
+      <div class="code-box">agy-toolkit init ../my-service --name order-service --stack spring-boot --mode feature</div>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-top:6px;">Supported stacks: <code>spring-boot</code> (Java 23), <code>node-ts</code> (Node 20), <code>python</code> (Python 3.12). Modes: <code>feature</code>, <code>spike</code>, <code>quickfix</code>.</p>
+    </div>
+
+    <div class="playbook-step">
+      <h3>3. Non-Destructive Downstream Synchronization</h3>
+      <p>Pull the latest skills, agents, and lifecycle hooks into an existing downstream repository while strictly preserving your local rules and session memory:</p>
+      <div class="code-box">agy-toolkit update ../my-service</div>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-top:6px;">Add <code>--dry-run</code> to preview planned changes, or <code>--force-rules</code> to refresh customized rules from blueprints.</p>
+    </div>
+
+    <div class="playbook-step">
+      <h3>4. Dual-Tier Memory & Dynamic Auto-Compaction</h3>
+      <p>The memory engine prevents token exhaustion and amnesia by enforcing hard byte ceilings (1 KB for working context, 3 KB for architectural decisions). When approaching 85% capacity, auto-compaction triggers automatically via PostToolUse hooks:</p>
+      <div class="code-box"># Trigger manual auto-compaction
+agy-toolkit memory auto-compact
+
+# Preview compaction projections without writing
+agy-toolkit memory auto-compact --dry-run
+
+# Output metrics in JSON format
+agy-toolkit memory status --json</div>
+    </div>
+
+    <div class="playbook-step">
+      <h3>5. Multi-Agent Volatile IPC Event Bus Operations</h3>
+      <p>Agents pass structured messages and claim tasks through the volatile event bus without polluting conversational context:</p>
+      <div class="code-box"># Publish an event envelope
+agy-toolkit bus send --topic review --sender code-reviewer --recipient orchestrator --payload '{"status": "PASS"}'
+
+# Stream events in real time
+agy-toolkit bus watch --topic review --timeout 30</div>
+    </div>
+
+    <div class="playbook-step">
+      <h3>6. Native Antigravity MCP Server Integration</h3>
+      <p>Expose diagnostics, memory budgets, and event bus streaming directly to your Antigravity IDE agent by registering the MCP server in <code>~/.gemini/antigravity.json</code>:</p>
+      <div class="code-box">{
+  "mcpServers": {
+    "agy-toolkit": {
+      "command": "agy-toolkit",
+      "args": ["mcp"]
+    }
+  }
+}</div>
+    </div>
+
+    <!-- JSON DIAGNOSTIC IMPORTER -->
+    <section id="importer" class="section-header" style="margin-top:56px;">
+      <h2>Diagnostic JSON Importer</h2>
+      <p>Paste output from <code>agy-toolkit doctor --json</code> or <code>agy-toolkit memory status --json</code> to inspect external runs visually.</p>
+    </section>
+
+    <div class="card">
+      <textarea id="json-import-textarea" placeholder="Paste AGYToolkit diagnostic JSON output here..." style="width:100%; height:120px; background:#090d13; color:#a5b4fc; border:1px solid var(--border-color); border-radius:6px; padding:12px; font-family:var(--font-mono); font-size:0.85rem; resize:vertical;"></textarea>
+      <div style="margin-top:12px; display:flex; gap:12px;">
+        <button class="btn btn-primary" onclick="parseImportedJSON()">Render Imported Diagnostics</button>
+        <button class="btn" onclick="loadLiveDiagnostics()">Reset to Live Diagnostics</button>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <p><strong>AGYToolkit</strong> &bull; Sovereign Multi-Agent AI Development Framework for Google Antigravity &bull; 2026</p>
+    <p style="margin-top:6px; color:var(--text-muted);">Strict Quality Gates &bull; Red-Green-Refactor TDD &bull; Zero Emojis &bull; Modular Architectures (&lt;600 Lines)</p>
+  </footer>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>
