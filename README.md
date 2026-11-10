@@ -70,8 +70,12 @@ flowchart TD
    - **Autonomous Compaction**: When memory usage crosses 85% of capacity, the engine archives full snapshots to `.agents/memory/sessions/`, prunes working memory to essential goals/blockers, and evicts oldest decisions via FIFO to `docs/adr/decisions-history.md`.
    - Guarantees seamless `/compact` operations with zero context loss.
 
-6. **Universal Project Initializer, Updater & Health Diagnostics**:
+6. **Universal Project Initializer, Turnkey Starters & Health Diagnostics**:
    - `agy-toolkit init`: Bootstrap any downstream repository with complete governance in seconds.
+   - **Turnkey Production Starters (`--template`)**:
+     - `spring-boot-hexagonal`: Java 23 / Spring Boot 3.3+ Hexagonal architecture with domain models, inbound REST ports, JPA adapters, and Testcontainers.
+     - `node-clean-ts`: Node.js / TypeScript microservice with Fastify, Zod validation, Vitest test suite, and multi-stage Dockerfile.
+     - `python-fastapi`: Python 3.12+ async service with FastAPI, Pydantic v2, pytest suite, and ruff linting.
    - `agy-toolkit update`: Non-destructively refresh skills, agents, and hooks in existing workspaces while preserving custom rules and memory.
    - `agy-toolkit doctor`: Deep environment and workspace compliance auditor.
 
@@ -102,8 +106,16 @@ agy-toolkit doctor
 # Mount all 28 skills and 15 agents machine-wide into ~/.gemini/config/
 agy-toolkit link-global
 
-# Scaffold governance into a target project
+# List available turnkey production stack templates
+agy-toolkit --list-templates
+
+# Scaffold governance only into a target project
 agy-toolkit init ../my-service --name my-service --stack spring-boot --mode feature
+
+# Scaffold turnkey compiling production starters
+agy-toolkit init ../order-service --name order-service --template spring-boot-hexagonal
+agy-toolkit init ../auth-gateway --name auth-gateway --template node-clean-ts
+agy-toolkit init ../payment-service --name payment-service --template python-fastapi
 
 # Update skills, agents, and hooks in downstream project non-destructively
 agy-toolkit update ../my-service
@@ -184,13 +196,17 @@ AGYToolkit/
 │   │   ├── hooks.json           # Active AGY event hook triggers
 │   │   ├── skills/              # 28 Progressive SDLC Skills
 │   │   └── memory/              # Memory templates (active-session, decisions, volatile-bus)
-│   └── rules/
-│       ├── GEMINI.md.template   # Injected project rules
-│       └── AGENTS.md.template   # Injected agent instructions
+│   ├── rules/
+│   │   ├── GEMINI.md.template   # Injected project rules
+│   │   └── AGENTS.md.template   # Injected agent instructions
+│   └── stacks/                  # Turnkey production starter templates
+│       ├── spring-boot-hexagonal/  # Java 23 / Spring Boot 3.3+ Hexagonal architecture
+│       ├── node-clean-ts/          # Node.js / TypeScript / Fastify / Vitest
+│       └── python-fastapi/         # Python 3.12+ / FastAPI / Pydantic v2 / pytest
 │
 ├── automation/                  # Framework CLI, core engines & verification
-│   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, bus, doctor, linker, mcp, updater)
-│   └── tests/                   # 149 automated unit & verification tests
+│   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, scaffolder_stacks, memory, bus, doctor, linker, mcp, updater)
+│   └── tests/                   # 160 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide

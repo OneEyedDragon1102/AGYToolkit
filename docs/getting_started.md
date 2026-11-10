@@ -46,6 +46,7 @@ Verify installation:
 agy-toolkit --list-tools
 agy-toolkit --list-agents
 agy-toolkit --list-skills
+agy-toolkit --list-templates
 ```
 
 ---
@@ -54,26 +55,43 @@ agy-toolkit --list-skills
 
 To govern any project with AGYToolkit, use the `init` command. This scaffolds the complete `.agents/` runtime, memory architecture, lifecycle hooks, and project rules directly into the target project root without polluting it with unused domain code.
 
+You can also pass `--template` to generate a turnkey, compiling, test-covered production architecture from day one!
+
 ### Command Syntax
 ```bash
-agy-toolkit init [target-path] [--name <project-name>] [--stack <stack>] [--mode <mode>]
+agy-toolkit init [target-path] [--name <project-name>] [--stack <stack>] [--mode <mode>] [--template <template>]
 ```
 
 ### Parameters
 - `target-path`: Destination directory (defaults to current directory `.`).
 - `--name`: Name of the project (defaults to the folder name).
 - `--stack`: Primary technology stack:
-  - `spring-boot`: Java 23, Spring Boot 3.4+, Maven, Hexagonal Architecture.
+  - `spring-boot`: Java 23, Spring Boot 3.3+, Maven, Hexagonal Architecture.
   - `node-ts`: Node.js, TypeScript, Vitest, Fastify/Express, MCP.
   - `python`: Python 3.12, `.venv`, `unittest`, PEP 8.
 - `--mode`: Development mode:
   - `feature`: Full SDLC governance (Plan -> TDD -> Implement -> Review -> Staging).
   - `spike`: Rapid exploration on an isolated branch with relaxed plan gates.
   - `quickfix`: Targeted bug fixing and direct test verification.
+- `--template`: Turnkey production starter template:
+  - `spring-boot-hexagonal` (aliases: `spring-boot`, `java-hexagonal`): Java 23, Spring Boot 3.3+, Hexagonal domain models, inbound REST ports, JPA persistence adapters, Testcontainers, and Maven build.
+  - `node-clean-ts` (aliases: `node-ts`, `clean-ts`, `typescript`): High-performance TypeScript microservice with Fastify, Zod validation, Vitest suite, and multi-stage Dockerfile.
+  - `python-fastapi` (aliases: `fastapi`, `python`, `py-fastapi`): Modern async Python 3.12+ service with FastAPI, Pydantic v2, pytest suite, and ruff linting.
+- `--list-templates`: List all available turnkey production boilerplate templates.
 
-### Example
+### Examples
 ```bash
+# Provision governance only
 agy-toolkit init ../my-service --name order-service --stack spring-boot --mode feature
+
+# Provision governance AND compiling Spring Boot Hexagonal starter
+agy-toolkit init ../order-service --name order-service --template spring-boot-hexagonal
+
+# Provision governance AND Fastify TypeScript microservice starter
+agy-toolkit init ../auth-gateway --name auth-gateway --template node-clean-ts
+
+# Provision governance AND FastAPI service starter
+agy-toolkit init ../payment-service --name payment-service --template python-fastapi
 ```
 
 ---
