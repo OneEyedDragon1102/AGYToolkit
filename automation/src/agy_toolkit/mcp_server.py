@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from agy_toolkit.bus import claim_event, list_events, publish_event
 from agy_toolkit.doctor import run_doctor
+from agy_toolkit.mcp_swarm import SWARM_TOOLS, handle_swarm_mcp_tool
 from agy_toolkit.memory import check_memory_budgets, record_decision
 from agy_toolkit.updater import update_project, format_update_report
 
@@ -216,11 +217,15 @@ class McpServer:
                     },
                 },
             },
-        ]
+        ] + SWARM_TOOLS
 
     def execute_tool(self, name: str, arguments: Dict[str, Any]) -> Tuple[str, bool]:
         """Dispatch tool invocation and return (content_text, is_error)."""
         try:
+            swarm_res = handle_swarm_mcp_tool(name, arguments, self.mem_dir)
+            if swarm_res is not None:
+                return swarm_res
+
             if name == "agy_doctor":
                 strict = bool(arguments.get("strict", False))
                 report = run_doctor(target_path=self.workspace_root)

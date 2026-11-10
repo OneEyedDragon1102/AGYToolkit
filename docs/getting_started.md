@@ -204,10 +204,35 @@ agy-toolkit bus list
 agy-toolkit bus watch --topic review --timeout 30
 ```
 
-### 4. Native Antigravity MCP Server (`mcp`)
+### 4. Autonomous Swarm Pipeline Choreography (`swarm`)
+Orchestrate multi-step DAG workflows across specialist subagents over the volatile event bus:
+```bash
+# List available blueprint workflows
+agy-toolkit swarm pipelines
+
+# Launch a new pipeline run with stack specialization
+agy-toolkit swarm run feature-sdlc --stack spring-boot --context '{"issue": 101}'
+
+# Query the real-time execution status card of a pipeline run
+agy-toolkit swarm status <run_id>
+
+# Query status in machine-readable JSON format
+agy-toolkit swarm status <run_id> --json
+
+# List all active and historical pipeline runs
+agy-toolkit swarm list
+
+# Advance a step and trigger downstream dependency unlocks
+agy-toolkit swarm advance <run_id> --step plan --status COMPLETED --result '{"spec": "approved"}' --claimer architect
+
+# Cancel an active run
+agy-toolkit swarm cancel <run_id> --reason "User requested stop"
+```
+
+### 5. Native Antigravity MCP Server (`mcp`)
 Run the standard I/O JSON-RPC Model Context Protocol (MCP) server or export static schemas:
 ```bash
-# Start native Antigravity MCP server over stdio (8 native tools)
+# Start native Antigravity MCP server over stdio (14 native tools)
 agy-toolkit mcp
 
 # Export static tool schemas for auto-discovery

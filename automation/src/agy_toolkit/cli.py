@@ -8,6 +8,7 @@ from typing import List
 
 from agy_toolkit.agents import list_agents
 from agy_toolkit.cli_bus import configure_bus_parser, handle_bus
+from agy_toolkit.cli_swarm import configure_swarm_parser, handle_swarm
 from agy_toolkit.doctor import run_doctor, print_doctor_report
 from agy_toolkit.linker import link_global
 from agy_toolkit.memory import (
@@ -346,6 +347,13 @@ def main(argv: List[str] = None):
     bus_sub = bus_parser.add_subparsers(dest="bus_action", required=True)
     configure_bus_parser(bus_sub)
 
+    # swarm subcommand
+    swarm_parser = subparsers.add_parser(
+        "swarm", help="Autonomous multi-agent DAG pipeline choreography"
+    )
+    swarm_sub = swarm_parser.add_subparsers(dest="swarm_action", required=True)
+    configure_swarm_parser(swarm_sub)
+
     # mcp command
     mcp_parser = subparsers.add_parser(
         "mcp",
@@ -422,6 +430,8 @@ def main(argv: List[str] = None):
         handle_memory(args)
     elif args.command == "bus":
         handle_bus(args)
+    elif args.command == "swarm":
+        handle_swarm(args)
     elif args.command == "mcp":
         handle_mcp(args)
     elif args.command == "pr-review":

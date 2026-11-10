@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional
 
 from agy_toolkit.agents import list_agents
 from agy_toolkit.bus import list_events
+from agy_toolkit.choreographer import list_pipeline_runs
 from agy_toolkit.doctor import run_doctor
 from agy_toolkit.memory import check_memory_budgets
 
@@ -84,6 +85,9 @@ def collect_dashboard_metrics(workspace_root: Optional[Path] = None) -> Dict[str
     # 3. Volatile Bus metrics
     bus_events = list_events(memory_dir=mem_dir)
     bus_claimed = sum(1 for e in bus_events if getattr(e, "claimed_by", None))
+    swarm_runs = list_pipeline_runs(memory_dir=mem_dir)
+    swarm_active = sum(1 for r in swarm_runs if r.status == "RUNNING")
+    swarm_completed = sum(1 for r in swarm_runs if r.status == "COMPLETED")
 
     # 4. Agent and Skill metrics
     agents = list_agents()
@@ -112,6 +116,21 @@ def collect_dashboard_metrics(workspace_root: Optional[Path] = None) -> Dict[str
             "claimed_events_count": bus_claimed,
             "recent_events": [e.to_dict() for e in bus_events[:5]],
         },
+        "swarm": {
+            "total_runs_count": len(swarm_runs),
+            "active_runs_count": swarm_active,
+            "completed_runs_count": swarm_completed,
+            "recent_runs": [
+                {
+                    "run_id": r.run_id,
+                    "pipeline": r.pipeline_name,
+                    "status": r.status,
+                    "created_at": r.created_at,
+                    "steps_summary": f"{sum(1 for s in r.steps.values() if s.status == 'COMPLETED')}/{len(r.steps)}",
+                }
+                for r in swarm_runs[:5]
+            ],
+        },
         "agents_count": len(agents),
         "skills_count": 28,
     }
@@ -122,6 +141,7 @@ def render_tui(workspace_root: Optional[Path] = None) -> str:
     metrics = collect_dashboard_metrics(workspace_root)
     mem = metrics["memory"]
     bus = metrics["bus"]
+    swarm = metrics["swarm"]
 
     sep = "=" * 78
     sub_sep = "-" * 78
@@ -162,6 +182,7 @@ def render_tui(workspace_root: Optional[Path] = None) -> str:
         "[4] Volatile IPC Event Bus & Autonomous Swarm",
         sub_sep,
         f"  Active Bus Envelopes  : {bus['active_events_count']} active ({bus['claimed_events_count']} claimed)",
+        f"  Swarm Pipeline Runs   : {swarm['active_runs_count']} running, {swarm['completed_runs_count']} completed ({swarm['total_runs_count']} total)",
         f"  Specialist Subagents  : {metrics['agents_count']} universal agents registered",
         f"  Progressive Skills    : {metrics['skills_count']} SDLC skills mounted across 5 tracks",
     ])
@@ -170,6 +191,11 @@ def render_tui(workspace_root: Optional[Path] = None) -> str:
         lines.append("\n  Recent IPC Events:")
         for e in bus["recent_events"]:
             lines.append(f"    * {e.get('id', '')} [{e.get('topic', '')}] {e.get('sender', '')} -> {e.get('recipient', '')}")
+
+    if swarm["recent_runs"]:
+        lines.append("\n  Recent Swarm Pipeline Runs:")
+        for r in swarm["recent_runs"]:
+            lines.append(f"    * [{r['status']:<9}] {r['run_id']} ({r['pipeline']}) - Steps: {r['steps_summary']}")
 
     lines.extend([
         "",
