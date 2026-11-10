@@ -159,7 +159,7 @@ class McpServer:
             },
             {
                 "name": "agy_bus_claim",
-                "description": "Atomically claim an event on the volatile bus to prevent duplicate processing by competing agents.",
+                "description": "Atomically claim an event on the volatile bus with lease duration to prevent duplicate processing.",
                 "inputSchema": {
                     "type": "object",
                     "required": ["event_id", "claimer"],
@@ -171,6 +171,47 @@ class McpServer:
                         "claimer": {
                             "type": "string",
                             "description": "Identifier of the claiming agent.",
+                        },
+                        "lease_seconds": {
+                            "type": "integer",
+                            "description": "Lease duration in seconds (default: 300).",
+                            "default": 300,
+                        },
+                    },
+                },
+            },
+            {
+                "name": "agy_bus_heartbeat",
+                "description": "Extend active claim lease for a task on volatile bus to signal agent liveness.",
+                "inputSchema": {
+                    "type": "object",
+                    "required": ["event_id", "claimer"],
+                    "properties": {
+                        "event_id": {
+                            "type": "string",
+                            "description": "Unique identifier of the claimed event.",
+                        },
+                        "claimer": {
+                            "type": "string",
+                            "description": "Identifier of the claiming agent.",
+                        },
+                        "extend_seconds": {
+                            "type": "integer",
+                            "description": "Optional new lease duration in seconds.",
+                        },
+                    },
+                },
+            },
+            {
+                "name": "agy_bus_reclaim",
+                "description": "Recover expired or orphaned claims on the volatile bus back into active events.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "grace_seconds": {
+                            "type": "number",
+                            "description": "Grace period in seconds beyond the lease expiration (default: 0.0).",
+                            "default": 0.0,
                         },
                     },
                 },
@@ -262,12 +303,49 @@ class McpServer:
             if name == "agy_bus_claim":
                 event_id = arguments.get("event_id")
                 claimer = arguments.get("claimer")
+                lease_seconds = int(arguments.get("lease_seconds", 300))
                 if not event_id or not claimer:
                     return "Error: 'event_id' and 'claimer' are required.", True
-                claimed = claim_event(event_id=event_id, claimer=claimer, memory_dir=self.mem_dir)
+                claimed = claim_event(
+                    event_id=event_id,
+                    claimer=claimer,
+                    lease_seconds=lease_seconds,
+                    memory_dir=self.mem_dir,
+                )
                 if claimed is None:
                     return f"Event {event_id} could not be claimed (already claimed or does not exist).", True
                 return json.dumps(claimed.to_dict(), indent=2), False
+
+            if name == "agy_bus_heartbeat":
+                from agy_toolkit.bus import heartbeat_claim
+
+                event_id = arguments.get("event_id")
+                claimer = arguments.get("claimer")
+                extend_seconds = arguments.get("extend_seconds")
+                if not event_id or not claimer:
+                    return "Error: 'event_id' and 'claimer' are required.", True
+                success = heartbeat_claim(
+                    event_id=event_id,
+                    claimer=claimer,
+                    extend_seconds=extend_seconds,
+                    memory_dir=self.mem_dir,
+                )
+                if not success:
+                    return f"Failed to refresh heartbeat for event '{event_id}'. Lock missing or claimer mismatch.", True
+                return f"Heartbeat refreshed for event '{event_id}' by claimer '{claimer}'.", False
+
+            if name == "agy_bus_reclaim":
+                from agy_toolkit.bus import reclaim_expired_claims
+
+                grace = float(arguments.get("grace_seconds", 0.0) or 0.0)
+                reclaimed = reclaim_expired_claims(
+                    memory_dir=self.mem_dir,
+                    grace_seconds=grace,
+                )
+                return json.dumps({
+                    "reclaimed_count": len(reclaimed),
+                    "reclaimed_events": reclaimed,
+                }, indent=2), False
 
             if name == "agy_update":
                 dry_run = bool(arguments.get("dry_run", False))

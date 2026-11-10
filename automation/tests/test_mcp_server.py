@@ -88,6 +88,8 @@ class TestMcpServer(unittest.TestCase):
         self.assertIn("agy_bus_send", tool_names)
         self.assertIn("agy_bus_read", tool_names)
         self.assertIn("agy_bus_claim", tool_names)
+        self.assertIn("agy_bus_heartbeat", tool_names)
+        self.assertIn("agy_bus_reclaim", tool_names)
         self.assertIn("agy_update", tool_names)
 
         # Inspect inputSchema contracts
@@ -339,9 +341,11 @@ class TestMcpServer(unittest.TestCase):
         """Verify exporting tool schemas to static directory."""
         schema_dir = self.workspace_dir / "schemas"
         exported = self.server.export_schemas(schema_dir)
-        self.assertEqual(len(exported), 8)
+        self.assertEqual(len(exported), 10)
         self.assertTrue((schema_dir / "agy_update.json").exists())
         self.assertTrue((schema_dir / "agy_memory_compact.json").exists())
+        self.assertTrue((schema_dir / "agy_bus_heartbeat.json").exists())
+        self.assertTrue((schema_dir / "agy_bus_reclaim.json").exists())
         for path in exported:
             self.assertTrue(path.exists())
             data = json.loads(path.read_text(encoding="utf-8"))

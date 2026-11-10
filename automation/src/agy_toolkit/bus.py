@@ -134,9 +134,14 @@ def read_event(
 def claim_event(
     event_id: str,
     claimer: str,
+    lease_seconds: int = 300,
     memory_dir: Optional[Path] = None,
 ) -> Optional[BusEvent]:
-    """Atomically claim an event for processing, preventing duplicate execution by competing agents."""
+    """Atomically claim an event for processing, recording lease duration and payload for crash resilience."""
+    if isinstance(lease_seconds, (Path, str)) and not str(lease_seconds).isdigit():
+        memory_dir = Path(lease_seconds)
+        lease_seconds = 300
+
     bus_dir = _get_volatile_bus_dir(memory_dir)
     source_file = bus_dir / f"{event_id}.json"
     claim_lock = bus_dir / f"{event_id}.claim"
@@ -145,45 +150,213 @@ def claim_event(
         return None
 
     try:
+        with open(source_file, "r", encoding="utf-8") as f:
+            raw_data = json.load(f)
+        event = BusEvent.from_dict(raw_data)
+    except (json.JSONDecodeError, OSError, KeyError):
+        return None
+
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    claim_record = {
+        "claimer": claimer,
+        "claimed_at": now_iso,
+        "heartbeat_at": now_iso,
+        "lease_seconds": int(lease_seconds),
+        "event": event.to_dict(),
+    }
+
+    try:
         # Atomic lock creation via O_CREAT | O_EXCL
         fd = os.open(str(claim_lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         with open(fd, "w", encoding="utf-8") as f:
-            f.write(json.dumps({
-                "claimer": claimer,
-                "claimed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            }))
+            f.write(json.dumps(claim_record, indent=2))
     except (FileExistsError, OSError):
         # Another thread or agent won the claim race
         return None
 
     try:
-        with open(source_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        event = BusEvent.from_dict(data)
-        try:
-            source_file.unlink()
-        except OSError:
-            pass
-        return event
-    except (json.JSONDecodeError, OSError, KeyError):
-        return None
+        source_file.unlink()
+    except OSError:
+        pass
+
+    return event
 
 
 def complete_claimed_event(
     event_id: str,
-    claimer: str,
+    claimer: Optional[str] = None,
     memory_dir: Optional[Path] = None,
 ) -> bool:
     """Remove a claimed event lock once task processing is completed."""
     bus_dir = _get_volatile_bus_dir(memory_dir)
     claim_lock = bus_dir / f"{event_id}.claim"
-    try:
-        if claim_lock.exists():
-            claim_lock.unlink()
-            return True
+    if not claim_lock.exists():
         return False
+
+    if claimer is not None:
+        try:
+            with open(claim_lock, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if data.get("claimer") != claimer:
+                return False
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    try:
+        claim_lock.unlink()
+        return True
     except OSError:
         return False
+
+
+def heartbeat_claim(
+    event_id: str,
+    claimer: str,
+    extend_seconds: Optional[int] = None,
+    memory_dir: Optional[Path] = None,
+) -> bool:
+    """Extend the lease of an actively claimed event to indicate worker liveness."""
+    bus_dir = _get_volatile_bus_dir(memory_dir)
+    claim_lock = bus_dir / f"{event_id}.claim"
+
+    if not claim_lock.exists():
+        return False
+
+    try:
+        with open(claim_lock, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return False
+
+    if data.get("claimer") != claimer:
+        return False
+
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    data["heartbeat_at"] = now_iso
+    if extend_seconds is not None and int(extend_seconds) > 0:
+        data["lease_seconds"] = int(extend_seconds)
+
+    try:
+        tmp_fd, tmp_path = tempfile.mkstemp(dir=str(bus_dir), prefix="hb_", suffix=".tmp")
+        with open(tmp_fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        os.replace(tmp_path, str(claim_lock))
+        return True
+    except OSError:
+        return False
+
+
+def get_claim_status(
+    event_id: str,
+    memory_dir: Optional[Path] = None,
+) -> Optional[Dict[str, Any]]:
+    """Inspect active claim lock details and remaining lease duration."""
+    bus_dir = _get_volatile_bus_dir(memory_dir)
+    claim_lock = bus_dir / f"{event_id}.claim"
+
+    if not claim_lock.exists():
+        return None
+
+    try:
+        with open(claim_lock, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+    claimer = data.get("claimer", "unknown")
+    lease_sec = float(data.get("lease_seconds", 300))
+    heartbeat_str = data.get("heartbeat_at") or data.get("claimed_at")
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    try:
+        ref_time = datetime.datetime.fromisoformat(heartbeat_str)
+        if ref_time.tzinfo is None:
+            ref_time = ref_time.replace(tzinfo=datetime.timezone.utc)
+        elapsed = (now - ref_time).total_seconds()
+    except (ValueError, TypeError):
+        elapsed = 0.0
+
+    remaining = max(0.0, lease_sec - elapsed)
+    is_expired = elapsed > lease_sec
+
+    return {
+        "event_id": event_id,
+        "claimer": claimer,
+        "claimed_at": data.get("claimed_at"),
+        "heartbeat_at": data.get("heartbeat_at"),
+        "lease_seconds": int(lease_sec),
+        "elapsed_seconds": round(elapsed, 1),
+        "remaining_seconds": round(remaining, 1),
+        "is_expired": is_expired,
+        "topic": data.get("event", {}).get("topic", "unknown"),
+    }
+
+
+def list_claims(memory_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """List all currently active and expired claims on the volatile bus."""
+    bus_dir = _get_volatile_bus_dir(memory_dir)
+    results: List[Dict[str, Any]] = []
+
+    for claim_path in sorted(bus_dir.glob("*.claim")):
+        status = get_claim_status(claim_path.stem, memory_dir=memory_dir)
+        if status:
+            results.append(status)
+
+    return results
+
+
+def reclaim_expired_claims(
+    memory_dir: Optional[Path] = None,
+    grace_seconds: float = 0.0,
+) -> List[Dict[str, Any]]:
+    """Scan and recover orphaned or timed-out claims, restoring events to the bus."""
+    bus_dir = _get_volatile_bus_dir(memory_dir)
+    reclaimed: List[Dict[str, Any]] = []
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    for claim_path in sorted(bus_dir.glob("*.claim")):
+        event_id = claim_path.stem
+        status = get_claim_status(event_id, memory_dir=memory_dir)
+        if not status:
+            continue
+
+        elapsed = status["elapsed_seconds"]
+        lease_sec = status["lease_seconds"]
+        if elapsed > (lease_sec + grace_seconds):
+            try:
+                with open(claim_path, "r", encoding="utf-8") as f:
+                    claim_data = json.load(f)
+            except (json.JSONDecodeError, OSError):
+                continue
+
+            event_dict = claim_data.get("event")
+            if event_dict:
+                meta = event_dict.get("metadata") or {}
+                meta["reclaimed_from"] = status["claimer"]
+                meta["reclaimed_at"] = now.isoformat()
+                meta["reclaim_count"] = meta.get("reclaim_count", 0) + 1
+                event_dict["metadata"] = meta
+
+                source_file = bus_dir / f"{event_id}.json"
+                tmp_fd, tmp_path = tempfile.mkstemp(dir=str(bus_dir), prefix="rec_", suffix=".tmp")
+                with open(tmp_fd, "w", encoding="utf-8") as f:
+                    json.dump(event_dict, f, indent=2)
+                os.replace(tmp_path, str(source_file))
+
+            try:
+                claim_path.unlink()
+            except OSError:
+                pass
+
+            reclaimed.append({
+                "id": event_id,
+                "claimer": status["claimer"],
+                "lease_seconds": int(lease_sec),
+                "elapsed_seconds": elapsed,
+                "topic": status["topic"],
+            })
+
+    return reclaimed
 
 
 def list_events(
@@ -341,10 +514,6 @@ def watch_events(
 
                 seen_ids.add(stem)
                 batch_events.append(event)
-
-
-
-
             except (json.JSONDecodeError, OSError, KeyError):
                 continue
 
