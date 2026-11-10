@@ -223,17 +223,22 @@ def list_available_pipelines() -> List[Dict[str, Any]]:
     return result
 
 
-def _get_runs_dir(memory_dir: Optional[Path] = None) -> Path:
+def _get_runs_dir(memory_dir: Optional[Path] = None, create: bool = False) -> Path:
     """Resolve and ensure volatile-bus/runs directory."""
     base_dir = ensure_memory_dirs(memory_dir)
     runs_dir = base_dir / "volatile-bus" / "runs"
-    runs_dir.mkdir(parents=True, exist_ok=True)
+    if create:
+        try:
+            runs_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            pass
     return runs_dir
 
 
 def _save_pipeline_run(run: PipelineRun, memory_dir: Optional[Path] = None) -> Path:
     """Persist pipeline run state to JSON file with atomic write semantics."""
-    runs_dir = _get_runs_dir(memory_dir)
+    runs_dir = _get_runs_dir(memory_dir, create=True)
+
     target_file = runs_dir / f"{run.run_id}.json"
     tmp_fd, tmp_path = tempfile.mkstemp(dir=str(runs_dir), prefix="run_", suffix=".tmp")
     with open(tmp_fd, "w", encoding="utf-8") as f:
@@ -244,7 +249,10 @@ def _save_pipeline_run(run: PipelineRun, memory_dir: Optional[Path] = None) -> P
 
 def load_pipeline_run(run_id: str, memory_dir: Optional[Path] = None) -> Optional[PipelineRun]:
     """Load an existing pipeline run by its unique identifier."""
-    runs_dir = _get_runs_dir(memory_dir)
+    runs_dir = _get_runs_dir(memory_dir, create=False)
+    if not runs_dir.exists():
+        return None
+
     target_file = runs_dir / f"{run_id}.json"
     if not target_file.exists():
         return None
@@ -259,7 +267,10 @@ def load_pipeline_run(run_id: str, memory_dir: Optional[Path] = None) -> Optiona
 
 def list_pipeline_runs(memory_dir: Optional[Path] = None) -> List[PipelineRun]:
     """Retrieve all pipeline runs recorded in the runs directory."""
-    runs_dir = _get_runs_dir(memory_dir)
+    runs_dir = _get_runs_dir(memory_dir, create=False)
+    if not runs_dir.exists():
+        return []
+
     runs: List[PipelineRun] = []
 
     for file_path in sorted(runs_dir.glob("*.json")):

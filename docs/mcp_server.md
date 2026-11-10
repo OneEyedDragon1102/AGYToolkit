@@ -1,6 +1,6 @@
 # AGYToolkit Native Antigravity MCP Server (`agy-mcp`)
 
-The **AGYToolkit MCP Server** provides native Model Context Protocol (MCP) integration over standard input/output (`stdio`), exposing core toolkit governance, dual-tier memory budgets, dynamic memory auto-compaction, and multi-agent volatile IPC capabilities directly to Google Antigravity agents.
+The **AGYToolkit MCP Server** provides native Model Context Protocol (MCP) integration over standard input/output (`stdio`), exposing core toolkit governance, dual-tier memory budgets, dynamic memory auto-compaction, multi-agent volatile IPC, and autonomous DAG pipeline swarm choreography directly to Google Antigravity agents.
 
 ---
 
@@ -8,21 +8,22 @@ The **AGYToolkit MCP Server** provides native Model Context Protocol (MCP) integ
 
 ```mermaid
 flowchart TD
-    subgraph HostEnvironment [Antigravity Runtime]
-        Agent[Antigravity Chat / Agent]
-        MCPClient[MCP Client stdio]
+    subgraph HostEnvironment ["Antigravity Runtime"]
+        Agent["Antigravity Chat / Agent"]
+        MCPClient["MCP Client (stdio)"]
     end
 
-    subgraph MCPServer [agy-toolkit mcp]
-        Protocol[JSON-RPC 2.0 Engine: Protocol 2024-11-05]
-        Dispatcher[Tool Dispatcher]
+    subgraph MCPServer ["agy-toolkit mcp"]
+        Protocol["JSON-RPC 2.0 Engine: Protocol 2024-11-05"]
+        Dispatcher["Tool Dispatcher"]
     end
 
-    subgraph FrameworkEngine [AGYToolkit Modules]
-        Doctor[doctor.py: Diagnostic Health Auditor]
-        Memory[memory.py: Budget, Decision Registry & Auto-Compactor]
-        Bus[bus.py: Volatile IPC Event Bus]
-        Updater[updater.py: Downstream Synchronizer]
+    subgraph FrameworkEngine ["AGYToolkit Modules"]
+        Doctor["doctor.py: Diagnostic Health Auditor"]
+        Memory["memory.py: Budget, Decision Registry & Auto-Compactor"]
+        Bus["bus.py: Volatile IPC Bus & Leases"]
+        Swarm["choreographer.py: Swarm DAG Pipelines"]
+        Updater["updater.py: Downstream Synchronizer"]
     end
 
     Agent <--> MCPClient
@@ -31,6 +32,7 @@ flowchart TD
     Dispatcher --> Doctor
     Dispatcher --> Memory
     Dispatcher --> Bus
+    Dispatcher --> Swarm
     Dispatcher --> Updater
 ```
 
@@ -70,7 +72,7 @@ If running directly from the Python repository source without global packaging:
 
 ## 3. Tool Catalog Reference
 
-The MCP server exposes eight native tools:
+The MCP server exposes fourteen native tools:
 
 ### `agy_doctor`
 * **Description**: Runs a diagnostic health check and governance audit on the environment.
@@ -115,11 +117,58 @@ The MCP server exposes eight native tools:
 * **Output**: JSON array of matching event envelopes.
 
 ### `agy_bus_claim`
-* **Description**: Atomically claims an event from the volatile bus to prevent duplicate processing by competing agents.
+* **Description**: Atomically claims an event from the volatile bus with a lease duration to prevent duplicate processing by competing agents.
 * **Arguments**:
   - `event_id` *(string, required)*: The unique ID of the event envelope to claim.
   - `claimer` *(string, required)*: Identifier of the claiming agent.
+  - `lease_seconds` *(integer, optional, default: `300`)*: Initial lease duration in seconds.
 * **Output**: Claimed event payload or error if already claimed.
+
+### `agy_bus_heartbeat`
+* **Description**: Extends the active claim lease for a task on the volatile bus to signal agent liveness during long-running tasks.
+* **Arguments**:
+  - `event_id` *(string, required)*: The unique ID of the claimed event.
+  - `claimer` *(string, required)*: Identifier of the claiming agent.
+  - `extend_seconds` *(integer, optional)*: New lease duration in seconds.
+* **Output**: Confirmation message of lease renewal or lock error.
+
+### `agy_bus_reclaim`
+* **Description**: Sweeps and recovers expired or orphaned claims on the volatile bus, returning tasks to the unassigned queue with audit provenance.
+* **Arguments**:
+  - `grace_seconds` *(number, optional, default: `0.0`)*: Grace period beyond expiration before forced reclamation.
+* **Output**: Count and identifiers of reclaimed tasks.
+
+### `agy_swarm_run`
+* **Description**: Launches a new autonomous multi-agent DAG pipeline run across specialist subagents.
+* **Arguments**:
+  - `pipeline` *(string, required)*: Blueprint name (`feature-sdlc`, `code-review`, `quickfix`).
+  - `stack` *(string, optional, choices: `spring-boot`, `node-ts`, `python`)*: Tech stack specialization.
+  - `context` *(object, optional)*: Initial context payload dictionary.
+* **Output**: JSON representation of the initialized pipeline run and initial dispatched step.
+
+### `agy_swarm_status`
+* **Description**: Queries execution topology, step status, and progress of a multi-agent pipeline run.
+* **Arguments**:
+  - `run_id` *(string, required)*: Unique pipeline run identifier.
+* **Output**: JSON structure detailing each step's state, assigned role, event ID, claimer, and error if any.
+
+### `agy_swarm_advance`
+* **Description**: Transitions step status in a pipeline run and automatically unlocks downstream dependent steps with upstream context handoffs.
+* **Arguments**:
+  - `run_id` *(string, required)*: Pipeline run identifier.
+  - `step` *(string, required)*: Step name to transition.
+  - `status` *(string, required, choices: `COMPLETED`, `FAILED`, `CLAIMED`)*: New step state.
+  - `result` *(any, optional)*: Step output payload to propagate downstream.
+  - `error` *(string, optional)*: Error message if step failed.
+  - `claimer` *(string, optional)*: Agent identifier reporting progress.
+* **Output**: Updated pipeline run state with newly dispatched downstream steps.
+
+### `agy_swarm_cancel`
+* **Description**: Cancels an active multi-agent pipeline run, marking pending steps as SKIPPED.
+* **Arguments**:
+  - `run_id` *(string, required)*: Pipeline run identifier.
+  - `reason` *(string, optional, default: `"Operator cancelled via MCP"`)*: Reason for cancellation.
+* **Output**: Cancellation confirmation message.
 
 ### `agy_update`
 * **Description**: Non-destructively synchronizes the workspace's skills, agents, and hooks from latest blueprints while preserving custom rules and memory.
@@ -145,7 +194,7 @@ agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
 ```
 Output:
 ```text
-[AGYToolkit MCP] Exported 8 MCP tool schemas to .../.agents/mcp/agy-toolkit
+[AGYToolkit MCP] Exported 14 MCP tool schemas to .../.agents/mcp/agy-toolkit
   * agy_doctor.json
   * agy_memory_status.json
   * agy_memory_record.json
@@ -153,5 +202,11 @@ Output:
   * agy_bus_send.json
   * agy_bus_read.json
   * agy_bus_claim.json
+  * agy_bus_heartbeat.json
+  * agy_bus_reclaim.json
+  * agy_swarm_run.json
+  * agy_swarm_status.json
+  * agy_swarm_advance.json
+  * agy_swarm_cancel.json
   * agy_update.json
 ```

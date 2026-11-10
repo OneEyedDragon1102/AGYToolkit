@@ -91,6 +91,10 @@ class TestMcpServer(unittest.TestCase):
         self.assertIn("agy_bus_heartbeat", tool_names)
         self.assertIn("agy_bus_reclaim", tool_names)
         self.assertIn("agy_update", tool_names)
+        self.assertIn("agy_swarm_run", tool_names)
+        self.assertIn("agy_swarm_status", tool_names)
+        self.assertIn("agy_swarm_advance", tool_names)
+        self.assertIn("agy_swarm_cancel", tool_names)
 
         # Inspect inputSchema contracts
         for tool in tools:
@@ -341,11 +345,15 @@ class TestMcpServer(unittest.TestCase):
         """Verify exporting tool schemas to static directory."""
         schema_dir = self.workspace_dir / "schemas"
         exported = self.server.export_schemas(schema_dir)
-        self.assertEqual(len(exported), 10)
+        self.assertEqual(len(exported), 14)
         self.assertTrue((schema_dir / "agy_update.json").exists())
         self.assertTrue((schema_dir / "agy_memory_compact.json").exists())
         self.assertTrue((schema_dir / "agy_bus_heartbeat.json").exists())
         self.assertTrue((schema_dir / "agy_bus_reclaim.json").exists())
+        self.assertTrue((schema_dir / "agy_swarm_run.json").exists())
+        self.assertTrue((schema_dir / "agy_swarm_status.json").exists())
+        self.assertTrue((schema_dir / "agy_swarm_advance.json").exists())
+        self.assertTrue((schema_dir / "agy_swarm_cancel.json").exists())
         for path in exported:
             self.assertTrue(path.exists())
             data = json.loads(path.read_text(encoding="utf-8"))
