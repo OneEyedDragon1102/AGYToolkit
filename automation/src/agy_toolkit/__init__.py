@@ -15,6 +15,19 @@ from agy_toolkit.bus import (
     watch_events,
     clear_bus,
 )
+from agy_toolkit.choreographer import (
+    PipelineStep,
+    StepState,
+    PipelineRun,
+    STANDARD_PIPELINES,
+    create_pipeline_run,
+    load_pipeline_run,
+    list_pipeline_runs,
+    advance_step,
+    cancel_pipeline_run,
+    list_available_pipelines,
+    get_pipeline_definition,
+)
 from agy_toolkit.doctor import run_doctor, DoctorReport
 from agy_toolkit.linker import link_global
 from agy_toolkit.mcp_server import McpServer
@@ -47,6 +60,17 @@ __all__ = [
     "reclaim_expired_claims",
     "watch_events",
     "clear_bus",
+    "PipelineStep",
+    "StepState",
+    "PipelineRun",
+    "STANDARD_PIPELINES",
+    "create_pipeline_run",
+    "load_pipeline_run",
+    "list_pipeline_runs",
+    "advance_step",
+    "cancel_pipeline_run",
+    "list_available_pipelines",
+    "get_pipeline_definition",
     "run_doctor",
     "DoctorReport",
     "link_global",
