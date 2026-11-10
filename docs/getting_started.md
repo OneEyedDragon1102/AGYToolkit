@@ -227,12 +227,18 @@ agy-toolkit swarm advance <run_id> --step plan --status COMPLETED --result '{"sp
 
 # Cancel an active run
 agy-toolkit swarm cancel <run_id> --reason "User requested stop"
+
+# Start autonomous background swarm worker daemon
+agy-toolkit swarm worker
+
+# Execute a single atomic worker claim-and-advance sweep
+agy-toolkit swarm worker --run-once
 ```
 
 ### 5. Native Antigravity MCP Server (`mcp`)
 Run the standard I/O JSON-RPC Model Context Protocol (MCP) server or export static schemas:
 ```bash
-# Start native Antigravity MCP server over stdio (14 native tools)
+# Start native Antigravity MCP server over stdio (16 native tools)
 agy-toolkit mcp
 
 # Export static tool schemas for auto-discovery

@@ -427,6 +427,9 @@ def advance_step(
 
     elif status == "FAILED":
         run.status = "FAILED"
+        for s in run.steps.values():
+            if s.status in ("PENDING", "DISPATCHED"):
+                s.status = "SKIPPED"
 
     _save_pipeline_run(run, memory_dir=memory_dir)
     return run

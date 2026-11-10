@@ -165,6 +165,46 @@ def handle_swarm(args):
             sys.exit(1)
         print(f"[AGYToolkit Swarm] Run '{run_id}' cancelled. Reason: {reason}")
 
+    elif action == "worker":
+        from agy_toolkit.worker import SwarmWorker
+
+        workspace_root = Path(getattr(args, "path", ".") or ".").resolve()
+        mem_dir = workspace_root / ".agents" / "memory"
+        poll_interval = float(getattr(args, "poll_interval", 1.0) or 1.0)
+        timeout_seconds = int(getattr(args, "timeout", 300) or 300)
+        run_once = getattr(args, "run_once", False)
+        max_cycles = getattr(args, "max_cycles", None)
+        if max_cycles is not None:
+            max_cycles = int(max_cycles)
+
+        worker = SwarmWorker(
+            memory_dir=mem_dir,
+            workspace_root=workspace_root,
+            poll_interval=poll_interval,
+            timeout_seconds=timeout_seconds,
+        )
+
+        if run_once:
+            print(f"[AGYToolkit Swarm Worker] Running single worker cycle (Worker ID: {worker.worker_id})...")
+            res = worker.run_once()
+            if res:
+                print(f"[AGYToolkit Swarm Worker] Processed step '{res.step_name}' in run '{res.run_id}': [{res.status}] in {res.duration_ms}ms")
+                if res.error:
+                    print(f" Error: {res.error}")
+            else:
+                print("[AGYToolkit Swarm Worker] No dispatched steps found to claim.")
+        else:
+            print("=" * 70)
+            print(f" [AGYToolkit Swarm Worker] Supervisor Daemon Active (ID: {worker.worker_id})")
+            print(f" Workspace    : {workspace_root}")
+            print(f" Poll Interval: {poll_interval}s | Timeout: {timeout_seconds}s")
+            print(" Press Ctrl+C to stop daemon.")
+            print("=" * 70)
+            try:
+                worker.run_loop(max_cycles=max_cycles)
+            except KeyboardInterrupt:
+                print("\n[AGYToolkit Swarm Worker] Supervisor daemon stopped.")
+
 
 def configure_swarm_parser(swarm_sub):
     """Register all subparser arguments for 'agy-toolkit swarm'."""
@@ -204,3 +244,11 @@ def configure_swarm_parser(swarm_sub):
     cancel_parser.add_argument("run_id", help="Pipeline Run ID")
     cancel_parser.add_argument("path", nargs="?", default=".", help="Workspace root directory")
     cancel_parser.add_argument("--reason", default="Operator cancelled", help="Reason for cancellation")
+
+    # worker command
+    worker_parser = swarm_sub.add_parser("worker", help="Start autonomous swarm worker daemon or run single cycle")
+    worker_parser.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    worker_parser.add_argument("--run-once", action="store_true", help="Execute single claim-and-advance sweep and exit")
+    worker_parser.add_argument("--poll-interval", type=float, default=1.0, help="Polling interval in seconds (default: 1.0)")
+    worker_parser.add_argument("--max-cycles", type=int, help="Maximum polling cycles before exiting")
+    worker_parser.add_argument("--timeout", type=int, default=300, help="Step task execution timeout in seconds (default: 300)")

@@ -72,7 +72,7 @@ If running directly from the Python repository source without global packaging:
 
 ## 3. Tool Catalog Reference
 
-The MCP server exposes fourteen native tools:
+The MCP server exposes sixteen native tools:
 
 ### `agy_doctor`
 * **Description**: Runs a diagnostic health check and governance audit on the environment.
@@ -170,6 +170,18 @@ The MCP server exposes fourteen native tools:
   - `reason` *(string, optional, default: `"Operator cancelled via MCP"`)*: Reason for cancellation.
 * **Output**: Cancellation confirmation message.
 
+### `agy_swarm_worker_cycle`
+* **Description**: Executes a single atomic worker claim, execution, and advance sweep across ready DAG pipeline steps.
+* **Arguments**:
+  - `timeout_seconds` *(integer, optional, default: `300`)*: Step execution timeout.
+  - `command_override` *(string, optional)*: Explicit shell command override to execute for the step.
+* **Output**: Execution outcome dictionary detailing step status, output, and execution duration.
+
+### `agy_swarm_worker_status`
+* **Description**: Inspects swarm worker daemon readiness and lists all unassigned dispatched pipeline steps on the volatile bus.
+* **Arguments**: None.
+* **Output**: Worker availability status and list of pending pipeline steps.
+
 ### `agy_update`
 * **Description**: Non-destructively synchronizes the workspace's skills, agents, and hooks from latest blueprints while preserving custom rules and memory.
 * **Arguments**:
@@ -194,7 +206,7 @@ agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
 ```
 Output:
 ```text
-[AGYToolkit MCP] Exported 14 MCP tool schemas to .../.agents/mcp/agy-toolkit
+[AGYToolkit MCP] Exported 16 MCP tool schemas to .../.agents/mcp/agy-toolkit
   * agy_doctor.json
   * agy_memory_status.json
   * agy_memory_record.json
@@ -208,5 +220,7 @@ Output:
   * agy_swarm_status.json
   * agy_swarm_advance.json
   * agy_swarm_cancel.json
+  * agy_swarm_worker_cycle.json
+  * agy_swarm_worker_status.json
   * agy_update.json
 ```
