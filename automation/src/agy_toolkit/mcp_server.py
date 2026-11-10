@@ -1,7 +1,8 @@
 """Native Antigravity Model Context Protocol (MCP) Server.
 
 Exposes AGYToolkit health diagnostics, dual-tier memory budgets,
-and multi-agent volatile IPC event bus directly to AI agents via stdio JSON-RPC.
+multi-agent volatile IPC event bus, autonomous swarm choreography,
+and Tier 3 knowledge full-text search directly to AI agents via stdio JSON-RPC.
 """
 
 import json
@@ -11,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from agy_toolkit.bus import claim_event, list_events, publish_event
 from agy_toolkit.doctor import run_doctor
+from agy_toolkit.mcp_knowledge import KNOWLEDGE_TOOLS, handle_knowledge_tool
 from agy_toolkit.mcp_swarm import SWARM_TOOLS, handle_swarm_mcp_tool
 from agy_toolkit.memory import check_memory_budgets, record_decision
 from agy_toolkit.updater import update_project, format_update_report
@@ -61,11 +63,11 @@ class McpServer:
                     "properties": {
                         "decision": {
                             "type": "string",
-                            "description": "The architectural decision statement to record.",
+                            "description": "Binding architectural decision statement.",
                         },
                         "category": {
                             "type": "string",
-                            "description": "Category prefix (e.g. ARCH, GOV, DIST, BUS, TDD).",
+                            "description": "Decision classification category (default: ARCH).",
                             "default": "ARCH",
                         },
                     },
@@ -73,7 +75,7 @@ class McpServer:
             },
             {
                 "name": "agy_memory_compact",
-                "description": "Auto-compact active session and archive oldest decisions when approaching memory thresholds.",
+                "description": "Evaluate memory budgets and auto-compact session and decisions if threshold is exceeded.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -140,25 +142,6 @@ class McpServer:
                 },
             },
             {
-                "name": "agy_update",
-                "description": "Non-destructively update skills, agents, and hooks in downstream workspace.",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "dry_run": {
-                            "type": "boolean",
-                            "description": "Preview changes without modifying filesystem.",
-                            "default": False,
-                        },
-                        "force_rules": {
-                            "type": "boolean",
-                            "description": "Force overwrite project rules (GEMINI.md, AGENTS.md).",
-                            "default": False,
-                        },
-                    },
-                },
-            },
-            {
                 "name": "agy_bus_claim",
                 "description": "Atomically claim an event on the volatile bus with lease duration to prevent duplicate processing.",
                 "inputSchema": {
@@ -217,7 +200,26 @@ class McpServer:
                     },
                 },
             },
-        ] + SWARM_TOOLS
+            {
+                "name": "agy_update",
+                "description": "Refresh downstream skills, agents, and hooks from AGYToolkit core non-destructively.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "Simulate updates without modifying filesystem.",
+                            "default": False,
+                        },
+                        "force_rules": {
+                            "type": "boolean",
+                            "description": "Force refresh GEMINI.md and AGENTS.md rules from base templates.",
+                            "default": False,
+                        },
+                    },
+                },
+            },
+        ] + SWARM_TOOLS + KNOWLEDGE_TOOLS
 
     def execute_tool(self, name: str, arguments: Dict[str, Any]) -> Tuple[str, bool]:
         """Dispatch tool invocation and return (content_text, is_error)."""
@@ -225,6 +227,11 @@ class McpServer:
             swarm_res = handle_swarm_mcp_tool(name, arguments, self.mem_dir)
             if swarm_res is not None:
                 return swarm_res
+
+            know_res = handle_knowledge_tool(self.workspace_root, name, arguments)
+            if know_res is not None:
+                text = know_res["content"][0]["text"]
+                return text, False
 
             if name == "agy_doctor":
                 strict = bool(arguments.get("strict", False))
@@ -368,35 +375,24 @@ class McpServer:
 
     def process_line(self, line: str) -> Optional[str]:
         """Parse and handle a single line containing a JSON-RPC 2.0 message."""
-        raw = line.strip()
-        if not raw:
+        line = line.strip()
+        if not line:
             return None
 
         try:
-            req = json.loads(raw)
-        except json.JSONDecodeError:
+            req = json.loads(line)
+        except Exception as ex:
             return json.dumps({
                 "jsonrpc": "2.0",
                 "id": None,
                 "error": {
                     "code": -32700,
-                    "message": "Parse error",
-                },
-            })
-
-        if not isinstance(req, dict) or req.get("jsonrpc") != "2.0" or "method" not in req:
-            req_id = req.get("id") if isinstance(req, dict) else None
-            return json.dumps({
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "error": {
-                    "code": -32600,
-                    "message": "Invalid Request: missing jsonrpc or method",
+                    "message": f"Parse error: {str(ex)}",
                 },
             })
 
         req_id = req.get("id")
-        method = req["method"]
+        method = req.get("method")
         params = req.get("params", {})
 
         # Handle notifications (requests without id)

@@ -65,7 +65,7 @@ def scaffold_project(
         content = content.replace("{{PROJECT_NAME}}", project_name)
         (target_dir / "AGENTS.md").write_text(content, encoding="utf-8")
 
-    # 6. Ensure .gitignore excludes active-session.md and volatile-bus
+    # 6. Ensure .gitignore excludes active-session.md, volatile-bus, and knowledge.db
     gitignore_path = target_dir / ".gitignore"
     existing_ignore = gitignore_path.read_text(encoding="utf-8") if gitignore_path.exists() else ""
     ignore_entries = [
@@ -73,6 +73,7 @@ def scaffold_project(
         ".agents/memory/active-session.md",
         ".agents/memory/volatile-bus/*",
         "!.agents/memory/volatile-bus/.gitignore",
+        ".agents/memory/knowledge.db*",
     ]
     to_append = []
     for entry in ignore_entries:

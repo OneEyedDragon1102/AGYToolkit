@@ -264,6 +264,48 @@ def handle_memory(args):
         else:
             print(format_compact_report(report))
 
+    elif action == "search":
+        from agy_toolkit.knowledge import search_knowledge
+
+        ws = Path(args.path or ".").resolve()
+        query = args.query
+        cat = getattr(args, "category", None)
+        limit = getattr(args, "limit", 5)
+        results = search_knowledge(ws, query, category=cat, limit=limit)
+        if getattr(args, "json", False):
+            print(json.dumps([r.to_dict() for r in results], indent=2))
+        else:
+            print("=" * 70)
+            print(f" [AGYToolkit Knowledge Search] Query: '{query}'")
+            if cat:
+                print(f" Filter Category: [{cat}]")
+            print(f" Hits: {len(results)}")
+            print("=" * 70)
+            for idx, r in enumerate(results, 1):
+                date_info = f" ({r.date})" if r.date else ""
+                print(f"\n{idx}. [{r.category}] {r.title}{date_info}")
+                print(f"   Source:  {r.source_file}")
+                print(f"   Snippet: {r.snippet}")
+            print("\n" + "=" * 70)
+
+    elif action == "reindex":
+        from agy_toolkit.knowledge import index_workspace
+
+        ws = Path(args.path or ".").resolve()
+        force = getattr(args, "force", False)
+        report = index_workspace(ws, force=force)
+        if getattr(args, "json", False):
+            print(json.dumps(report.to_dict(), indent=2))
+        else:
+            print("=" * 60)
+            print(" [AGYToolkit Knowledge Engine] Reindexed Workspace")
+            print("=" * 60)
+            print(f" Files indexed:    {report.indexed_files}")
+            print(f" Files skipped:    {report.skipped_files} (unchanged)")
+            print(f" Total documents:  {report.total_documents}")
+            print(f" Elapsed:          {report.elapsed_ms} ms")
+            print("=" * 60)
+
 
 def handle_mcp(args):
     target = Path(args.path or ".").resolve()
@@ -373,6 +415,18 @@ def main(argv: List[str] = None):
     mem_compact.add_argument("--threshold", type=float, default=0.85, help="Usage threshold ratio (default: 0.85)")
     mem_compact.add_argument("--dry-run", action="store_true", help="Simulate compaction without writing")
     mem_compact.add_argument("--json", action="store_true", help="Output compaction report as JSON")
+
+    mem_search = mem_sub.add_parser("search", help="Full-text search historical ADRs and sprint sessions")
+    mem_search.add_argument("query", help="Full-text search keywords")
+    mem_search.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    mem_search.add_argument("--category", help="Optional category filter (e.g. ARCH, BUS, SEC)")
+    mem_search.add_argument("--limit", type=int, default=5, help="Maximum results (default: 5)")
+    mem_search.add_argument("--json", action="store_true", help="Output results as JSON")
+
+    mem_reindex = mem_sub.add_parser("reindex", help="Rebuild SQLite FTS5 knowledge search index")
+    mem_reindex.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    mem_reindex.add_argument("--force", action="store_true", help="Force reindexing all files")
+    mem_reindex.add_argument("--json", action="store_true", help="Output report as JSON")
 
     # bus subcommand
     bus_parser = subparsers.add_parser("bus", help="Interact with volatile multi-agent event bus")

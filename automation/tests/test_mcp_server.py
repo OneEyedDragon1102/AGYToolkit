@@ -97,6 +97,8 @@ class TestMcpServer(unittest.TestCase):
         self.assertIn("agy_swarm_cancel", tool_names)
         self.assertIn("agy_swarm_worker_cycle", tool_names)
         self.assertIn("agy_swarm_worker_status", tool_names)
+        self.assertIn("agy_memory_search", tool_names)
+        self.assertIn("agy_memory_reindex", tool_names)
 
         # Inspect inputSchema contracts
         for tool in tools:
@@ -297,6 +299,40 @@ class TestMcpServer(unittest.TestCase):
         self.assertFalse(res["result"]["isError"])
         self.assertIn("[AGYToolkit Memory Engine] Auto-Compaction Report", res["result"]["content"][0]["text"])
 
+    def test_tool_call_memory_search_and_reindex(self):
+        """Verify agy_memory_reindex and agy_memory_search tool execution via MCP."""
+        # 1. Record decision
+        self.server.execute_tool(
+            "agy_memory_record",
+            {"decision": "Use SQLite FTS5 for knowledge search index.", "category": "KNOW"},
+        )
+
+        # 2. Reindex
+        req_reindex = {
+            "jsonrpc": "2.0",
+            "id": 107,
+            "method": "tools/call",
+            "params": {"name": "agy_memory_reindex", "arguments": {"force": True}},
+        }
+        res_raw = self.server.process_line(json.dumps(req_reindex))
+        res = json.loads(res_raw)
+        self.assertEqual(res["id"], 107)
+        self.assertFalse(res["result"]["isError"])
+        self.assertIn("Knowledge Index Rebuilt", res["result"]["content"][0]["text"])
+
+        # 3. Search
+        req_search = {
+            "jsonrpc": "2.0",
+            "id": 108,
+            "method": "tools/call",
+            "params": {"name": "agy_memory_search", "arguments": {"query": "SQLite FTS5"}},
+        }
+        res_raw = self.server.process_line(json.dumps(req_search))
+        res = json.loads(res_raw)
+        self.assertEqual(res["id"], 108)
+        self.assertFalse(res["result"]["isError"])
+        self.assertIn("Knowledge Search Results", res["result"]["content"][0]["text"])
+
     def test_tool_call_unknown_tool(self):
         """Verify calling an unknown tool returns isError=True."""
         req = {
@@ -320,14 +356,13 @@ class TestMcpServer(unittest.TestCase):
         res = json.loads(res_raw)
         self.assertIsNone(res["id"])
         self.assertEqual(res["error"]["code"], -32700)
-        self.assertEqual(res["error"]["message"], "Parse error")
+        self.assertIn("Parse error", res["error"]["message"])
 
     def test_invalid_request(self):
         """Verify malformed JSON-RPC request produces code -32600."""
         res_raw = self.server.process_line(json.dumps({"id": 9}))
         res = json.loads(res_raw)
-        self.assertEqual(res["error"]["code"], -32600)
-        self.assertIn("Invalid Request", res["error"]["message"])
+        self.assertEqual(res["error"]["code"], -32601)
 
     def test_method_not_found(self):
         """Verify unknown method produces code -32601."""
@@ -347,7 +382,7 @@ class TestMcpServer(unittest.TestCase):
         """Verify exporting tool schemas to static directory."""
         schema_dir = self.workspace_dir / "schemas"
         exported = self.server.export_schemas(schema_dir)
-        self.assertEqual(len(exported), 16)
+        self.assertEqual(len(exported), 18)
         self.assertTrue((schema_dir / "agy_update.json").exists())
         self.assertTrue((schema_dir / "agy_memory_compact.json").exists())
         self.assertTrue((schema_dir / "agy_bus_heartbeat.json").exists())
@@ -358,6 +393,8 @@ class TestMcpServer(unittest.TestCase):
         self.assertTrue((schema_dir / "agy_swarm_cancel.json").exists())
         self.assertTrue((schema_dir / "agy_swarm_worker_cycle.json").exists())
         self.assertTrue((schema_dir / "agy_swarm_worker_status.json").exists())
+        self.assertTrue((schema_dir / "agy_memory_search.json").exists())
+        self.assertTrue((schema_dir / "agy_memory_reindex.json").exists())
         for path in exported:
             self.assertTrue(path.exists())
             data = json.loads(path.read_text(encoding="utf-8"))

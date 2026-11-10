@@ -383,6 +383,14 @@ def auto_compact_memory(
                     adr_file.write_text(new_adr, encoding="utf-8")
                     decisions_path.write_text(assembled_decisions, encoding="utf-8")
 
+    # 3. Incremental Tier 3 Knowledge Indexing after compaction
+    if not dry_run and (report.active_session_compacted or report.decisions_compacted):
+        try:
+            from agy_toolkit.knowledge import index_workspace
+            index_workspace(ws_root)
+        except Exception:
+            pass
+
     return report
 
 
