@@ -22,6 +22,7 @@ from agy_toolkit.memory import (
     record_decision,
 )
 from agy_toolkit.scaffolder import scaffold_project
+from agy_toolkit.skills_data import SKILL_TRACKS
 from agy_toolkit.updater import update_project, format_update_report
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent.parent / "templates"
@@ -39,47 +40,6 @@ TOOL_CATALOG = {
         "send_message",
     ],
     "Customizations": ["skills", "rules", "hooks", "plugins", "mcp_servers"],
-}
-
-SKILL_TRACKS = {
-    "Track A: Planning & Architecture": [
-        ("adr-architect", "Documents architecture decision records with trade-off matrices"),
-        ("plan-approval-gate", "Enforces plan-approval gate before code modifications"),
-        ("task-decomposer", "Decomposes complex user epics into atomic tasks"),
-        ("context-budgeter", "Manages token budgets and offloads volatile data"),
-        ("telemetry-logger", "Structures execution logs and cross-agent handoffs"),
-        ("handbook-enforcer", "Enforces repository guidelines and coding rules"),
-    ],
-    "Track B: TDD & Implementation": [
-        ("tdd-spring-boot", "Red-Green-Refactor TDD for Java 23 / Spring Boot"),
-        ("tdd-node-ts", "Red-Green-Refactor TDD for Node.js / TypeScript"),
-        ("tdd-python", "Isolated Python 3.12 TDD in virtual environments"),
-        ("spring-service-generator", "Generates Hexagonal Architecture Spring Boot services"),
-        ("node-mcp-builder", "Builds MCP servers and tools using TypeScript SDK"),
-        ("ui-component-builder", "Builds accessible, responsive UI components"),
-        ("refactor-cleaner", "Structural refactoring and modularization (<600 lines)"),
-    ],
-    "Track C: Review & Quality Gates": [
-        ("code-reviewer", "Production-grade code review on git diffs"),
-        ("anti-bloat-linter", "Scans for emojis, chatter, and monolithic files"),
-        ("security-scanner", "Audits for credentials, OWASP vulnerabilities, and CVEs"),
-        ("coverage-verifier", "Enforces mandatory 80%+ test coverage threshold"),
-        ("concurrency-auditor", "Audits multi-threaded code and race conditions"),
-        ("api-contract-checker", "Validates API schemas and DTO compatibility"),
-    ],
-    "Track D: Git, Staging & CI/CD": [
-        ("commit-craft", "Drafts atomic Conventional Commits"),
-        ("branch-manager", "Governs feature branch workflows and isolation"),
-        ("selective-stager", "Granular staging and sign-off verification"),
-        ("release-packager", "SemVer calculation, changelog generation, and packaging"),
-        ("ci-pipeline-validator", "Validates CI/CD workflow configurations"),
-    ],
-    "Track E: Meta-Framework & Extensibility": [
-        ("agy-inspector", "Audits AGY tools, skills, rules, and MCP servers"),
-        ("skill-author", "Authors project-specific domain skills on demand"),
-        ("agent-author", "Authors project-specific specialist subagents on demand"),
-        ("workspace-doctor", "Diagnoses workspace dependencies and build toolchains"),
-    ],
 }
 
 
@@ -172,6 +132,11 @@ def handle_update(args) -> int:
 
 def handle_doctor(args):
     target = Path(args.path or ".").resolve()
+    if getattr(args, "tui", False):
+        from agy_toolkit.dashboard import render_tui
+        print(render_tui(target))
+        return 0
+
     report = run_doctor(target_path=target)
 
     if getattr(args, "json", False):
@@ -183,6 +148,20 @@ def handle_doctor(args):
         sys.exit(1)
     elif not report.is_healthy:
         sys.exit(1)
+    return 0
+
+
+def handle_dashboard(args):
+    target = Path(args.path or ".").resolve()
+    if getattr(args, "web", False):
+        from agy_toolkit.dashboard import launch_web_dashboard
+        port = getattr(args, "port", 8765)
+        open_browser = not getattr(args, "no_browser", False)
+        launch_web_dashboard(workspace_root=target, port=port, open_browser=open_browser)
+    else:
+        from agy_toolkit.dashboard import render_tui
+        print(render_tui(target))
+    return 0
 
 
 def handle_link_global(args):
@@ -428,6 +407,14 @@ def main(argv: List[str] = None):
     doctor_parser.add_argument("path", nargs="?", default=".", help="Target workspace path (default: current dir)")
     doctor_parser.add_argument("--json", action="store_true", help="Output doctor findings as JSON")
     doctor_parser.add_argument("--strict", action="store_true", help="Fail with non-zero exit code on any warnings or failures")
+    doctor_parser.add_argument("--tui", action="store_true", help="Render diagnostic results in visual terminal TUI cockpit")
+
+    # dashboard subcommand
+    dash_parser = subparsers.add_parser("dashboard", help="Launch interactive terminal TUI or browser-based dashboard")
+    dash_parser.add_argument("path", nargs="?", default=".", help="Workspace root directory")
+    dash_parser.add_argument("--web", action="store_true", help="Launch browser-based web dashboard")
+    dash_parser.add_argument("--port", type=int, default=8765, help="Port for web dashboard (default: 8765)")
+    dash_parser.add_argument("--no-browser", action="store_true", help="Do not auto-open browser")
 
     # link-global subcommand
     link_parser = subparsers.add_parser("link-global", help="Mount skills and agents to ~/.gemini/config/ for global discovery")
@@ -561,7 +548,9 @@ def main(argv: List[str] = None):
     elif args.command == "update":
         return handle_update(args)
     elif args.command == "doctor":
-        handle_doctor(args)
+        return handle_doctor(args)
+    elif args.command == "dashboard":
+        return handle_dashboard(args)
     elif args.command == "link-global":
         handle_link_global(args)
     elif args.command == "memory":
