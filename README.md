@@ -79,6 +79,7 @@ flowchart TD
    - `agy-toolkit swarm`: Coordinates multi-step autonomous workflows across the 15 specialist subagents over the volatile event bus.
    - Declarative blueprints: `feature-sdlc` (5 steps), `code-review` (3 steps), and `quickfix` (3 steps) with stack-aware specialization (`spring-boot`, `node-ts`, `python`).
    - Self-healing task leases, heartbeat renewals, crash recovery, and automated upstream context propagation.
+   - Autonomous Swarm Worker Daemon (`agy-toolkit swarm worker`): Automatically claims dispatched DAG tasks, runs heartbeat supervisors, executes specialist work, and advances pipeline state hands-free.
 
 ---
 
@@ -122,7 +123,7 @@ agy-toolkit memory auto-compact --dry-run
 # Flush active session and archive to sessions/
 agy-toolkit memory flush
 
-# Start native Antigravity MCP Server over stdio (14 native tools)
+# Start native Antigravity MCP Server over stdio (16 native tools)
 agy-toolkit mcp
 
 # Export static MCP tool schemas for Antigravity discovery
@@ -148,6 +149,9 @@ agy-toolkit swarm advance <run_id> --step plan --status COMPLETED --result '{"sp
 
 # Inspect terminal cockpit dashboard with swarm telemetry
 agy-toolkit dashboard
+
+# Run a single autonomous swarm worker cycle
+agy-toolkit swarm worker --run-once
 
 # Run autonomous PR review and diff audit locally
 agy-toolkit pr-review --base origin/main
@@ -186,11 +190,11 @@ AGYToolkit/
 │
 ├── automation/                  # Framework CLI, core engines & verification
 │   ├── src/agy_toolkit/         # Core Python package (cli, scaffolder, memory, bus, doctor, linker, mcp, updater)
-│   └── tests/                   # 141 automated unit & verification tests
+│   └── tests/                   # 149 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide
-    ├── mcp_server.md            # Native Antigravity MCP Server setup & 14-tool reference
+    ├── mcp_server.md            # Native Antigravity MCP Server setup & 16-tool reference
     ├── ci_cd_governance.md      # CI/CD pipeline and PR review bot guide
     ├── specialist_agents.md     # In-depth reference for all 15 agents
     ├── skills_catalog.md        # Comprehensive catalog of all 28 skills

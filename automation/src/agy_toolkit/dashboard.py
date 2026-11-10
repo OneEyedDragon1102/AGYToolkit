@@ -88,6 +88,7 @@ def collect_dashboard_metrics(workspace_root: Optional[Path] = None) -> Dict[str
     swarm_runs = list_pipeline_runs(memory_dir=mem_dir)
     swarm_active = sum(1 for r in swarm_runs if r.status == "RUNNING")
     swarm_completed = sum(1 for r in swarm_runs if r.status == "COMPLETED")
+    ready_steps = sum(1 for e in bus_events if isinstance(e.payload, dict) and "run_id" in e.payload and "step" in e.payload)
 
     # 4. Agent and Skill metrics
     agents = list_agents()
@@ -120,6 +121,7 @@ def collect_dashboard_metrics(workspace_root: Optional[Path] = None) -> Dict[str
             "total_runs_count": len(swarm_runs),
             "active_runs_count": swarm_active,
             "completed_runs_count": swarm_completed,
+            "ready_steps_count": ready_steps,
             "recent_runs": [
                 {
                     "run_id": r.run_id,
@@ -183,6 +185,7 @@ def render_tui(workspace_root: Optional[Path] = None) -> str:
         sub_sep,
         f"  Active Bus Envelopes  : {bus['active_events_count']} active ({bus['claimed_events_count']} claimed)",
         f"  Swarm Pipeline Runs   : {swarm['active_runs_count']} running, {swarm['completed_runs_count']} completed ({swarm['total_runs_count']} total)",
+        f"  Worker Pending Tasks  : {swarm.get('ready_steps_count', 0)} ready for autonomous claim",
         f"  Specialist Subagents  : {metrics['agents_count']} universal agents registered",
         f"  Progressive Skills    : {metrics['skills_count']} SDLC skills mounted across 5 tracks",
     ])

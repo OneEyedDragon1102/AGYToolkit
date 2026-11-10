@@ -102,6 +102,32 @@ SWARM_TOOLS: List[Dict[str, Any]] = [
             },
         },
     },
+    {
+        "name": "agy_swarm_worker_cycle",
+        "description": "Execute a single atomic swarm worker sweep: claim, execute, and advance ready DAG pipeline step.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "timeout_seconds": {
+                    "type": "integer",
+                    "description": "Execution timeout in seconds (default: 300).",
+                    "default": 300,
+                },
+                "command_override": {
+                    "type": "string",
+                    "description": "Optional shell command to execute for the claimed step.",
+                },
+            },
+        },
+    },
+    {
+        "name": "agy_swarm_worker_status",
+        "description": "Inspect swarm worker readiness, active claims, and unassigned dispatched pipeline steps.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
 ]
 
 
@@ -171,5 +197,50 @@ def handle_swarm_mcp_tool(
         if not run:
             return f"Error: Pipeline run '{run_id}' not found.", True
         return f"Pipeline run '{run_id}' cancelled. Reason: {reason}", False
+
+    if name == "agy_swarm_worker_cycle":
+        from agy_toolkit.worker import SwarmWorker
+
+        timeout_sec = int(arguments.get("timeout_seconds", 300) or 300)
+        cmd_override = arguments.get("command_override")
+        worker = SwarmWorker(
+            memory_dir=mem_dir,
+            timeout_seconds=timeout_sec,
+        )
+        res = worker.run_once(command_override=cmd_override)
+        if res is None:
+            return json.dumps({
+                "processed": False,
+                "message": "No claimable dispatched steps found on volatile bus.",
+            }, indent=2), False
+        return json.dumps({
+            "processed": True,
+            "step": res.step_name,
+            "run_id": res.run_id,
+            "status": res.status,
+            "result": res.result,
+            "error": res.error,
+            "duration_ms": res.duration_ms,
+        }, indent=2), res.status == "FAILED"
+
+    if name == "agy_swarm_worker_status":
+        from agy_toolkit.worker import SwarmWorker
+
+        worker = SwarmWorker(memory_dir=mem_dir)
+        ready_events = worker.get_ready_step_events()
+        items = []
+        for e in ready_events:
+            p = e.payload if isinstance(e.payload, dict) else {}
+            items.append({
+                "event_id": e.id,
+                "run_id": p.get("run_id"),
+                "step": p.get("step"),
+                "role": p.get("role"),
+            })
+        return json.dumps({
+            "worker_ready": True,
+            "ready_steps_count": len(items),
+            "ready_steps": items,
+        }, indent=2), False
 
     return None
