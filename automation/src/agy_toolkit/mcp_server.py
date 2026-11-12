@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from agy_toolkit.bus import claim_event, list_events, publish_event
 from agy_toolkit.doctor import run_doctor
 from agy_toolkit.mcp_knowledge import KNOWLEDGE_TOOLS, handle_knowledge_tool
+from agy_toolkit.mcp_multi_repo import MULTI_REPO_TOOLS, handle_multi_repo_tool
 from agy_toolkit.mcp_swarm import SWARM_TOOLS, handle_swarm_mcp_tool
 from agy_toolkit.memory import check_memory_budgets, record_decision
 from agy_toolkit.updater import update_project, format_update_report
@@ -219,7 +220,7 @@ class McpServer:
                     },
                 },
             },
-        ] + SWARM_TOOLS + KNOWLEDGE_TOOLS
+        ] + SWARM_TOOLS + KNOWLEDGE_TOOLS + MULTI_REPO_TOOLS
 
     def execute_tool(self, name: str, arguments: Dict[str, Any]) -> Tuple[str, bool]:
         """Dispatch tool invocation and return (content_text, is_error)."""
@@ -232,6 +233,10 @@ class McpServer:
             if know_res is not None:
                 text = know_res["content"][0]["text"]
                 return text, False
+
+            multi_res = handle_multi_repo_tool(self.workspace_root, name, arguments)
+            if multi_res is not None:
+                return multi_res
 
             if name == "agy_doctor":
                 strict = bool(arguments.get("strict", False))

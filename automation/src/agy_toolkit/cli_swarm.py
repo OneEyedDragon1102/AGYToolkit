@@ -5,6 +5,12 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
+from agy_toolkit.multi_repo import (
+    format_multi_status_card,
+    get_multi_run,
+    launch_multi_run,
+    load_workspace_manifest,
+)
 from agy_toolkit.choreographer import (
     advance_step,
     cancel_pipeline_run,
@@ -205,6 +211,48 @@ def handle_swarm(args):
             except KeyboardInterrupt:
                 print("\n[AGYToolkit Swarm Worker] Supervisor daemon stopped.")
 
+    elif action == "multi-run":
+        ws_dir = Path(getattr(args, "path", ".") or ".").resolve()
+        try:
+            manifest = load_workspace_manifest(ws_dir)
+        except Exception as ex:
+            print(f"[AGYToolkit Multi-Repo Swarm] Error loading manifest: {str(ex)}")
+            sys.exit(1)
+
+        blueprint_name = args.blueprint
+        context = {}
+        if getattr(args, "context", None):
+            try:
+                context = json.loads(args.context)
+            except json.JSONDecodeError:
+                context = {"raw_context": args.context}
+
+        try:
+            run = launch_multi_run(manifest, blueprint_name, context=context)
+            print(f"[AGYToolkit Multi-Repo Swarm] Launched run '{run.run_id}' for pipeline '{blueprint_name}'")
+            print(format_multi_status_card(run, manifest))
+        except Exception as ex:
+            print(f"[AGYToolkit Multi-Repo Swarm] Error: {str(ex)}")
+            sys.exit(1)
+
+    elif action == "multi-status":
+        ws_dir = Path(getattr(args, "path", ".") or ".").resolve()
+        try:
+            manifest = load_workspace_manifest(ws_dir)
+        except Exception as ex:
+            print(f"[AGYToolkit Multi-Repo Swarm] Error loading manifest: {str(ex)}")
+            sys.exit(1)
+
+        run = get_multi_run(manifest, args.run_id)
+        if not run:
+            print(f"[AGYToolkit Multi-Repo Swarm] Multi-repo run '{args.run_id}' not found.")
+            sys.exit(1)
+
+        if getattr(args, "json", False):
+            print(json.dumps(run.to_dict(), indent=2))
+        else:
+            print(format_multi_status_card(run, manifest))
+
 
 def configure_swarm_parser(swarm_sub):
     """Register all subparser arguments for 'agy-toolkit swarm'."""
@@ -252,3 +300,15 @@ def configure_swarm_parser(swarm_sub):
     worker_parser.add_argument("--poll-interval", type=float, default=1.0, help="Polling interval in seconds (default: 1.0)")
     worker_parser.add_argument("--max-cycles", type=int, help="Maximum polling cycles before exiting")
     worker_parser.add_argument("--timeout", type=int, default=300, help="Step task execution timeout in seconds (default: 300)")
+
+    # multi-run command
+    mrun_parser = swarm_sub.add_parser("multi-run", help="Launch a cross-repository swarm pipeline run")
+    mrun_parser.add_argument("blueprint", help="Multi-repo blueprint (e.g. fullstack-feature, cross-review)")
+    mrun_parser.add_argument("path", nargs="?", default=".", help="Workspace root or manifest directory")
+    mrun_parser.add_argument("--context", help="Initial context payload as JSON string")
+
+    # multi-status command
+    mstatus_parser = swarm_sub.add_parser("multi-status", help="Query cross-repository swarm run progress card")
+    mstatus_parser.add_argument("run_id", help="Multi-repo Run ID (e.g. mrun-12345678)")
+    mstatus_parser.add_argument("path", nargs="?", default=".", help="Workspace root or manifest directory")
+    mstatus_parser.add_argument("--json", action="store_true", help="Output multi-run report as JSON")
