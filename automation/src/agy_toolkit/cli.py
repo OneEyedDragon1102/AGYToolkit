@@ -8,6 +8,7 @@ from typing import List
 
 from agy_toolkit.agents import list_agents
 from agy_toolkit.cli_bus import configure_bus_parser, handle_bus
+from agy_toolkit.cli_release import configure_release_parser, handle_release
 from agy_toolkit.cli_workspace import configure_workspace_parser, handle_workspace
 from agy_toolkit.cli_swarm import configure_swarm_parser, handle_swarm
 from agy_toolkit.doctor import run_doctor, print_doctor_report
@@ -448,6 +449,13 @@ def main(argv: List[str] = None):
     ws_sub = ws_parser.add_subparsers(dest="workspace_action", required=True)
     configure_workspace_parser(ws_sub)
 
+    # release command
+    release_parser = subparsers.add_parser(
+        "release",
+        help="Automated GitOps release bot: SemVer bump, changelog generation, and git tagging",
+    )
+    configure_release_parser(release_parser)
+
     # mcp command
     mcp_parser = subparsers.add_parser(
         "mcp",
@@ -529,6 +537,8 @@ def main(argv: List[str] = None):
         handle_memory(args)
     elif args.command == "bus":
         handle_bus(args)
+    elif args.command == "release":
+        return handle_release(args)
     elif args.command == "workspace":
         return handle_workspace(args)
     elif args.command == "swarm":

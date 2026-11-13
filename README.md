@@ -92,6 +92,11 @@ flowchart TD
    - Cross-Repository Event Bus Bridge: Connects distributed repositories and git worktrees to a shared volatile bus channel.
    - Cross-Repository Blueprints: `fullstack-feature` and `cross-review` choreograph multi-agent steps across backend, frontend, test, and security domains with automated dependency unlocks.
 
+9. **Automated GitOps Lifecycle & Release Bot (`release`)**:
+   - `agy-toolkit release (patch|minor|major)`: Automates SemVer increments, Conventional Commits parsing, CHANGELOG.md generation, and atomic git tagging (`vX.Y.Z`).
+   - Pre-flight quality gates verify working tree cleanliness, branch authorization (`main`), and 100% test pass rate before cutting releases.
+   - GitHub Actions workflow (`release.yml`): Automatically packages Python wheels/sdist and publishes official GitHub Releases with structured notes upon tag pushes.
+
 
 ---
 
@@ -222,12 +227,12 @@ AGYToolkit/
 │       └── python-fastapi/         # Python 3.12+ / FastAPI / Pydantic v2 / pytest
 │
 ├── automation/                  # Framework CLI, core engines & verification
-│   ├── src/agy_toolkit/         # Core Python package (cli, knowledge, multi_repo, mcp_multi_repo, cli_workspace, mcp_knowledge, scaffolder, scaffolder_stacks, memory, bus, doctor, linker, mcp, updater)
-│   └── tests/                   # 186 automated unit & verification tests
+│   ├── src/agy_toolkit/         # Core Python package (cli, release, cli_release, mcp_release, knowledge, multi_repo, mcp_multi_repo, cli_workspace, mcp_knowledge, scaffolder, scaffolder_stacks, memory, bus, doctor, linker, mcp, updater)
+│   └── tests/                   # 198 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide
-    ├── mcp_server.md            # Native Antigravity MCP Server setup & 21-tool reference
+    ├── mcp_server.md            # Native Antigravity MCP Server setup & 23-tool reference
     ├── ci_cd_governance.md      # CI/CD pipeline and PR review bot guide
     ├── specialist_agents.md     # In-depth reference for all 15 agents
     ├── skills_catalog.md        # Comprehensive catalog of all 28 skills

@@ -1,0 +1,79 @@
+name: AGYToolkit GitOps Automated Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-release:
+    name: Build & Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Build & Test Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build pytest pytest-cov
+          pip install -e .
+
+      - name: Run Test Verification Gate
+        run: |
+          pytest automation/tests
+
+      - name: Verify Environment Health
+        run: |
+          agy-toolkit doctor --strict
+
+      - name: Build Package Distribution (Wheel & Sdist)
+        run: |
+          python -m build --sdist --wheel
+
+      - name: Extract Changelog Notes for Release
+        id: changelog
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          VERSION="${TAG_NAME#v}"
+          # Extract section from CHANGELOG.md for this version if present
+          if [ -f CHANGELOG.md ]; then
+            python -c "
+          import sys
+          content = open('CHANGELOG.md').read()
+          ver_header = f'## [v$VERSION]'
+          if ver_header in content:
+              part = content.split(ver_header, 1)[1]
+              next_header = '\n## ['
+              notes = part.split(next_header, 1)[0]
+              print(notes.strip())
+          else:
+              print(f'Release $TAG_NAME')
+          " > release_notes.md
+          else
+            echo "Release $TAG_NAME" > release_notes.md
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.md
+          files: dist/*
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
