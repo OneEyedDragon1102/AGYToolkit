@@ -256,7 +256,7 @@ agy-toolkit swarm worker --run-once
 ### 5. Native Antigravity MCP Server (`mcp`)
 Run the standard I/O JSON-RPC Model Context Protocol (MCP) server or export static schemas:
 ```bash
-# Start native Antigravity MCP server over stdio (16 native tools)
+# Start native Antigravity MCP server over stdio (21 native tools)
 agy-toolkit mcp
 
 # Export static tool schemas for auto-discovery
@@ -264,3 +264,22 @@ agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
 ```
 
 For configuration details and tool parameter schemas, refer to the [Native Antigravity MCP Server Guide](mcp_server.md).
+
+### 6. Multi-Repository & Worktree Swarm Orchestrator (`workspace` & `swarm multi-*`)
+Coordinate multi-repository microservices, monorepos, and git worktrees under a unified workspace manifest:
+```bash
+# Auto-discover child repositories and initialize agy-workspace.json
+agy-toolkit workspace init --name fintech-suite
+
+# List all registered member repositories and detected tech stacks
+agy-toolkit workspace list
+
+# Audit workspace compliance, health, rules, and subagent readiness
+agy-toolkit workspace check
+
+# Launch a cross-repository swarm pipeline run
+agy-toolkit swarm multi-run fullstack-feature
+
+# Query cross-repository execution topology card and step progress
+agy-toolkit swarm multi-status <run_id>
+```

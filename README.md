@@ -86,6 +86,13 @@ flowchart TD
    - Self-healing task leases, heartbeat renewals, crash recovery, and automated upstream context propagation.
    - Autonomous Swarm Worker Daemon (`agy-toolkit swarm worker`): Automatically claims dispatched DAG tasks, runs heartbeat supervisors, executes specialist work, and advances pipeline state hands-free.
 
+
+8. **Multi-Repository & Worktree Swarm Orchestrator (`agy-workspace.json`)**:
+   - `agy-toolkit workspace`: Auto-discovers and audits multi-repo workspaces across diverse stacks (`spring-boot`, `node-ts`, `python`).
+   - Cross-Repository Event Bus Bridge: Connects distributed repositories and git worktrees to a shared volatile bus channel.
+   - Cross-Repository Blueprints: `fullstack-feature` and `cross-review` choreograph multi-agent steps across backend, frontend, test, and security domains with automated dependency unlocks.
+
+
 ---
 
 ## Quickstart & CLI Usage
@@ -215,12 +222,12 @@ AGYToolkit/
 │       └── python-fastapi/         # Python 3.12+ / FastAPI / Pydantic v2 / pytest
 │
 ├── automation/                  # Framework CLI, core engines & verification
-│   ├── src/agy_toolkit/         # Core Python package (cli, knowledge, mcp_knowledge, scaffolder, scaffolder_stacks, memory, bus, doctor, linker, mcp, updater)
-│   └── tests/                   # 172 automated unit & verification tests
+│   ├── src/agy_toolkit/         # Core Python package (cli, knowledge, multi_repo, mcp_multi_repo, cli_workspace, mcp_knowledge, scaffolder, scaffolder_stacks, memory, bus, doctor, linker, mcp, updater)
+│   └── tests/                   # 186 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide
-    ├── mcp_server.md            # Native Antigravity MCP Server setup & 18-tool reference
+    ├── mcp_server.md            # Native Antigravity MCP Server setup & 21-tool reference
     ├── ci_cd_governance.md      # CI/CD pipeline and PR review bot guide
     ├── specialist_agents.md     # In-depth reference for all 15 agents
     ├── skills_catalog.md        # Comprehensive catalog of all 28 skills

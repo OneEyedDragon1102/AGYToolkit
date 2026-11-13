@@ -94,7 +94,7 @@ class TestCLI(unittest.TestCase):
             with redirect_stdout(f):
                 main(["mcp", str(tmp_path), "--export-schemas", str(schema_dir)])
             out = f.getvalue()
-            self.assertIn("[AGYToolkit MCP] Exported 18 MCP tool schemas", out)
+            self.assertIn("[AGYToolkit MCP] Exported 21 MCP tool schemas", out)
             self.assertTrue((schema_dir / "agy_update.json").exists())
             self.assertTrue((schema_dir / "agy_doctor.json").exists())
             self.assertTrue((schema_dir / "agy_bus_send.json").exists())
@@ -107,6 +107,9 @@ class TestCLI(unittest.TestCase):
             self.assertTrue((schema_dir / "agy_swarm_worker_status.json").exists())
             self.assertTrue((schema_dir / "agy_memory_search.json").exists())
             self.assertTrue((schema_dir / "agy_memory_reindex.json").exists())
+            self.assertTrue((schema_dir / "agy_workspace_status.json").exists())
+            self.assertTrue((schema_dir / "agy_swarm_multi_run.json").exists())
+            self.assertTrue((schema_dir / "agy_swarm_multi_status.json").exists())
 
     def test_main_with_bus_watch(self):
         with tempfile.TemporaryDirectory() as tmp:

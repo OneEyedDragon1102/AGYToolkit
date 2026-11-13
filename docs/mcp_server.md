@@ -1,6 +1,6 @@
 # AGYToolkit Native Antigravity MCP Server (`agy-mcp`)
 
-The **AGYToolkit MCP Server** provides native Model Context Protocol (MCP) integration over standard input/output (`stdio`), exposing core toolkit governance, dual-tier memory budgets, dynamic memory auto-compaction, multi-agent volatile IPC, and autonomous DAG pipeline swarm choreography directly to Google Antigravity agents.
+The **AGYToolkit MCP Server** provides native Model Context Protocol (MCP) integration over standard input/output (`stdio`), exposing core toolkit governance, dual-tier memory budgets, dynamic memory auto-compaction, multi-agent volatile IPC, autonomous DAG pipeline swarm choreography, SQLite FTS5 knowledge search, and cross-repository swarm coordination directly to Google Antigravity agents.
 
 ---
 
@@ -21,8 +21,10 @@ flowchart TD
     subgraph FrameworkEngine ["AGYToolkit Modules"]
         Doctor["doctor.py: Diagnostic Health Auditor"]
         Memory["memory.py: Budget, Decision Registry & Auto-Compactor"]
+        Knowledge["knowledge.py: SQLite FTS5 Search Engine"]
         Bus["bus.py: Volatile IPC Bus & Leases"]
         Swarm["choreographer.py: Swarm DAG Pipelines"]
+        MultiRepo["multi_repo.py: Cross-Repository Swarms"]
         Updater["updater.py: Downstream Synchronizer"]
     end
 
@@ -31,8 +33,10 @@ flowchart TD
     Protocol --> Dispatcher
     Dispatcher --> Doctor
     Dispatcher --> Memory
+    Dispatcher --> Knowledge
     Dispatcher --> Bus
     Dispatcher --> Swarm
+    Dispatcher --> MultiRepo
     Dispatcher --> Updater
 ```
 
@@ -72,7 +76,7 @@ If running directly from the Python repository source without global packaging:
 
 ## 3. Tool Catalog Reference
 
-The MCP server exposes sixteen native tools:
+The MCP server exposes twenty-one native tools:
 
 ### `agy_doctor`
 * **Description**: Runs a diagnostic health check and governance audit on the environment.
@@ -189,6 +193,41 @@ The MCP server exposes sixteen native tools:
   - `force_rules` *(boolean, optional, default: `false`)*: Force refresh project rules (`GEMINI.md`, `AGENTS.md`) from templates.
 * **Output**: Formatted summary report of refreshed components.
 
+### `agy_memory_search`
+* **Description**: Sub-millisecond FTS5 BM25 search across historical architectural decisions (ADRs), sprint sessions, and documentation.
+* **Arguments**:
+  - `query` *(string, required)*: Keywords or search phrase.
+  - `category` *(string, optional)*: Category filter (e.g. `ARCH`, `BUS`, `SEC`, `SESSION`).
+  - `limit` *(integer, optional, default: `5`)*: Maximum results to retrieve.
+* **Output**: Formatted search result list with snippets and document sources.
+
+### `agy_memory_reindex`
+* **Description**: Incremental or forced rebuild of the SQLite FTS5 permanent knowledge index.
+* **Arguments**:
+  - `force` *(boolean, optional, default: `false`)*: Force reindexing all documents.
+* **Output**: Index build metrics including documents indexed and elapsed time.
+
+### `agy_workspace_status`
+* **Description**: Audits multi-repository workspace status, member health, detected tech stacks, and governance compliance.
+* **Arguments**:
+  - `manifest_path` *(string, optional)*: Path to `agy-workspace.json` or workspace directory.
+* **Output**: Workspace topology summary card and member repository health statuses.
+
+### `agy_swarm_multi_run`
+* **Description**: Launches a cross-repository swarm pipeline run spanning multiple services and git worktrees.
+* **Arguments**:
+  - `blueprint` *(string, required)*: Multi-repo blueprint name (`fullstack-feature`, `cross-review`).
+  - `manifest_path` *(string, optional)*: Workspace directory or manifest path.
+  - `context` *(object, optional)*: Initial context payload.
+* **Output**: Execution topology card with assigned repository roles and initial dispatched steps.
+
+### `agy_swarm_multi_status`
+* **Description**: Queries cross-repository swarm execution progress and step states.
+* **Arguments**:
+  - `run_id` *(string, required)*: Multi-repo run ID.
+  - `manifest_path` *(string, optional)*: Workspace directory or manifest path.
+* **Output**: Live progress card of steps, target repositories, agents, and statuses.
+
 ---
 
 ## 4. CLI Usage & Schema Export
@@ -206,7 +245,7 @@ agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
 ```
 Output:
 ```text
-[AGYToolkit MCP] Exported 16 MCP tool schemas to .../.agents/mcp/agy-toolkit
+[AGYToolkit MCP] Exported 21 MCP tool schemas to .../.agents/mcp/agy-toolkit
   * agy_doctor.json
   * agy_memory_status.json
   * agy_memory_record.json
@@ -216,11 +255,16 @@ Output:
   * agy_bus_claim.json
   * agy_bus_heartbeat.json
   * agy_bus_reclaim.json
+  * agy_update.json
   * agy_swarm_run.json
   * agy_swarm_status.json
   * agy_swarm_advance.json
   * agy_swarm_cancel.json
   * agy_swarm_worker_cycle.json
   * agy_swarm_worker_status.json
-  * agy_update.json
+  * agy_memory_search.json
+  * agy_memory_reindex.json
+  * agy_workspace_status.json
+  * agy_swarm_multi_run.json
+  * agy_swarm_multi_status.json
 ```

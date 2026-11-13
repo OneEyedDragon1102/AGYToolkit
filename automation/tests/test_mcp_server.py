@@ -99,6 +99,9 @@ class TestMcpServer(unittest.TestCase):
         self.assertIn("agy_swarm_worker_status", tool_names)
         self.assertIn("agy_memory_search", tool_names)
         self.assertIn("agy_memory_reindex", tool_names)
+        self.assertIn("agy_workspace_status", tool_names)
+        self.assertIn("agy_swarm_multi_run", tool_names)
+        self.assertIn("agy_swarm_multi_status", tool_names)
 
         # Inspect inputSchema contracts
         for tool in tools:
@@ -382,7 +385,7 @@ class TestMcpServer(unittest.TestCase):
         """Verify exporting tool schemas to static directory."""
         schema_dir = self.workspace_dir / "schemas"
         exported = self.server.export_schemas(schema_dir)
-        self.assertEqual(len(exported), 18)
+        self.assertEqual(len(exported), 21)
         self.assertTrue((schema_dir / "agy_update.json").exists())
         self.assertTrue((schema_dir / "agy_memory_compact.json").exists())
         self.assertTrue((schema_dir / "agy_bus_heartbeat.json").exists())
@@ -395,11 +398,65 @@ class TestMcpServer(unittest.TestCase):
         self.assertTrue((schema_dir / "agy_swarm_worker_status.json").exists())
         self.assertTrue((schema_dir / "agy_memory_search.json").exists())
         self.assertTrue((schema_dir / "agy_memory_reindex.json").exists())
+        self.assertTrue((schema_dir / "agy_workspace_status.json").exists())
+        self.assertTrue((schema_dir / "agy_swarm_multi_run.json").exists())
+        self.assertTrue((schema_dir / "agy_swarm_multi_status.json").exists())
         for path in exported:
             self.assertTrue(path.exists())
             data = json.loads(path.read_text(encoding="utf-8"))
             self.assertIn("name", data)
             self.assertIn("inputSchema", data)
+
+    def test_tool_call_multi_repo(self):
+        """Verify agy_workspace_status, agy_swarm_multi_run, and agy_swarm_multi_status."""
+        import re
+        from agy_toolkit.multi_repo import init_workspace_manifest
+        init_workspace_manifest(self.workspace_dir, name="test-ws")
+
+        # Test agy_workspace_status
+        req = {
+            "jsonrpc": "2.0",
+            "id": 11,
+            "method": "tools/call",
+            "params": {"name": "agy_workspace_status", "arguments": {}}
+        }
+        res = json.loads(self.server.process_line(json.dumps(req)))
+        self.assertFalse(res["result"]["isError"])
+        self.assertIn("test-ws", res["result"]["content"][0]["text"])
+
+        # Test agy_swarm_multi_run
+        req = {
+            "jsonrpc": "2.0",
+            "id": 12,
+            "method": "tools/call",
+            "params": {
+                "name": "agy_swarm_multi_run",
+                "arguments": {"blueprint": "cross-review"}
+            }
+        }
+        res = json.loads(self.server.process_line(json.dumps(req)))
+        self.assertFalse(res["result"]["isError"])
+        text = res["result"]["content"][0]["text"]
+        self.assertIn("cross-review", text)
+        self.assertIn("mrun-", text)
+
+        m = re.search(r"mrun-[0-9a-f]+", text)
+        self.assertIsNotNone(m)
+        run_id = m.group(0)
+
+        # Test agy_swarm_multi_status
+        req = {
+            "jsonrpc": "2.0",
+            "id": 13,
+            "method": "tools/call",
+            "params": {
+                "name": "agy_swarm_multi_status",
+                "arguments": {"run_id": run_id}
+            }
+        }
+        res = json.loads(self.server.process_line(json.dumps(req)))
+        self.assertFalse(res["result"]["isError"])
+        self.assertIn(run_id, res["result"]["content"][0]["text"])
 
     def test_run_stdio_stream(self):
         """Verify run_stdio processes stream lines and handles EOF."""
