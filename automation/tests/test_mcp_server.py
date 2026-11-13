@@ -102,6 +102,8 @@ class TestMcpServer(unittest.TestCase):
         self.assertIn("agy_workspace_status", tool_names)
         self.assertIn("agy_swarm_multi_run", tool_names)
         self.assertIn("agy_swarm_multi_status", tool_names)
+        self.assertIn("agy_release_plan", tool_names)
+        self.assertIn("agy_release_create", tool_names)
 
         # Inspect inputSchema contracts
         for tool in tools:
@@ -385,7 +387,7 @@ class TestMcpServer(unittest.TestCase):
         """Verify exporting tool schemas to static directory."""
         schema_dir = self.workspace_dir / "schemas"
         exported = self.server.export_schemas(schema_dir)
-        self.assertEqual(len(exported), 21)
+        self.assertEqual(len(exported), 23)
         self.assertTrue((schema_dir / "agy_update.json").exists())
         self.assertTrue((schema_dir / "agy_memory_compact.json").exists())
         self.assertTrue((schema_dir / "agy_bus_heartbeat.json").exists())
@@ -401,6 +403,8 @@ class TestMcpServer(unittest.TestCase):
         self.assertTrue((schema_dir / "agy_workspace_status.json").exists())
         self.assertTrue((schema_dir / "agy_swarm_multi_run.json").exists())
         self.assertTrue((schema_dir / "agy_swarm_multi_status.json").exists())
+        self.assertTrue((schema_dir / "agy_release_plan.json").exists())
+        self.assertTrue((schema_dir / "agy_release_create.json").exists())
         for path in exported:
             self.assertTrue(path.exists())
             data = json.loads(path.read_text(encoding="utf-8"))
@@ -457,6 +461,40 @@ class TestMcpServer(unittest.TestCase):
         res = json.loads(self.server.process_line(json.dumps(req)))
         self.assertFalse(res["result"]["isError"])
         self.assertIn(run_id, res["result"]["content"][0]["text"])
+
+    def test_tool_call_release(self):
+        """Verify agy_release_plan and agy_release_create MCP tool executions."""
+        import subprocess
+        subprocess.run(["git", "init", "-b", "main"], cwd=str(self.workspace_dir), capture_output=True)
+        (self.workspace_dir / "pyproject.toml").write_text('[project]\nversion = "0.1.0"\n', encoding="utf-8")
+        req = {
+            "jsonrpc": "2.0",
+            "id": 14,
+            "method": "tools/call",
+            "params": {"name": "agy_release_plan", "arguments": {"bump_type": "patch", "repo_path": str(self.workspace_dir)}}
+        }
+        res = json.loads(self.server.process_line(json.dumps(req)))
+        self.assertFalse(res["result"]["isError"])
+        self.assertIn("[AGYToolkit Release Plan]", res["result"]["content"][0]["text"])
+
+        req2 = {
+            "jsonrpc": "2.0",
+            "id": 15,
+            "method": "tools/call",
+            "params": {
+                "name": "agy_release_create",
+                "arguments": {
+                    "bump_type": "patch",
+                    "dry_run": True,
+                    "skip_tests": True,
+                    "allow_branch": True,
+                    "repo_path": str(self.workspace_dir)
+                }
+            }
+        }
+        res2 = json.loads(self.server.process_line(json.dumps(req2)))
+        self.assertFalse(res2["result"]["isError"])
+        self.assertIn("DRY RUN ACTIVE", res2["result"]["content"][0]["text"])
 
     def test_run_stdio_stream(self):
         """Verify run_stdio processes stream lines and handles EOF."""

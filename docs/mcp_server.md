@@ -76,7 +76,7 @@ If running directly from the Python repository source without global packaging:
 
 ## 3. Tool Catalog Reference
 
-The MCP server exposes twenty-one native tools:
+The MCP server exposes twenty-three native tools:
 
 ### `agy_doctor`
 * **Description**: Runs a diagnostic health check and governance audit on the environment.
@@ -228,6 +228,23 @@ The MCP server exposes twenty-one native tools:
   - `manifest_path` *(string, optional)*: Workspace directory or manifest path.
 * **Output**: Live progress card of steps, target repositories, agents, and statuses.
 
+### `agy_release_plan`
+* **Description**: Previews projected release plan, SemVer transition, Conventional Commits categorization, and CHANGELOG.md diff.
+* **Arguments**:
+  - `bump_type` *(string, required, choices: `patch`, `minor`, `major`)*: Semantic version increment type.
+  - `repo_path` *(string, optional)*: Repository root path (default: workspace root).
+* **Output**: Formatted changelog preview and commit categorization summary.
+
+### `agy_release_create`
+* **Description**: Executes the automated GitOps release pipeline: pre-flight checks, SemVer bump across metadata, CHANGELOG.md generation, and git tag creation.
+* **Arguments**:
+  - `bump_type` *(string, required, choices: `patch`, `minor`, `major`)*: Semantic version increment type.
+  - `repo_path` *(string, optional)*: Repository root path.
+  - `dry_run` *(boolean, optional, default: `false`)*: Simulate release without modifying files or git tags.
+  - `skip_tests` *(boolean, optional, default: `false`)*: Bypass test suite verification gate.
+  - `allow_branch` *(boolean, optional, default: `false`)*: Permit cutting release from non-main branch.
+* **Output**: Execution outcome detailing version bump, updated metadata files, and created git tag.
+
 ---
 
 ## 4. CLI Usage & Schema Export
@@ -245,7 +262,7 @@ agy-toolkit mcp --export-schemas .agents/mcp/agy-toolkit/
 ```
 Output:
 ```text
-[AGYToolkit MCP] Exported 21 MCP tool schemas to .../.agents/mcp/agy-toolkit
+[AGYToolkit MCP] Exported 23 MCP tool schemas to .../.agents/mcp/agy-toolkit
   * agy_doctor.json
   * agy_memory_status.json
   * agy_memory_record.json
@@ -267,4 +284,6 @@ Output:
   * agy_workspace_status.json
   * agy_swarm_multi_run.json
   * agy_swarm_multi_status.json
+  * agy_release_plan.json
+  * agy_release_create.json
 ```

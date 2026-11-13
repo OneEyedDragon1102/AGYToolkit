@@ -256,7 +256,7 @@ agy-toolkit swarm worker --run-once
 ### 5. Native Antigravity MCP Server (`mcp`)
 Run the standard I/O JSON-RPC Model Context Protocol (MCP) server or export static schemas:
 ```bash
-# Start native Antigravity MCP server over stdio (21 native tools)
+# Start native Antigravity MCP server over stdio (23 native tools)
 agy-toolkit mcp
 
 # Export static tool schemas for auto-discovery
@@ -282,4 +282,17 @@ agy-toolkit swarm multi-run fullstack-feature
 
 # Query cross-repository execution topology card and step progress
 agy-toolkit swarm multi-status <run_id>
+```
+
+### 7. Automated GitOps Release Bot (`release`)
+Execute automated SemVer increments, Conventional Commits changelog generation, atomic package metadata updates, and git tag creation:
+```bash
+# Preview projected release plan and changelog without modifying repository
+agy-toolkit release patch --notes-only
+
+# Simulate release in dry-run mode
+agy-toolkit release patch --dry-run
+
+# Execute full automated release (verifies clean tree, runs test gate, bumps version, updates CHANGELOG.md, and creates git tag)
+agy-toolkit release patch   # or 'minor', 'major'
 ```
