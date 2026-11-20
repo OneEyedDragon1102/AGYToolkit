@@ -55,13 +55,13 @@ flowchart TD
 
 3. **Lifecycle Hooks (`hooks.json`)**:
    - Automated runtime gates executed before and after tool calls (`PreToolUse`, `PostToolUse`, `SessionStart`).
-   - Hard blocks on direct commits to `main`, unapproved file modifications, monolithic code dumps, and failing test runs.
+   - Hard blocks on direct commits to `main`, unapproved file modifications, monolithic code dumps, failing test runs, and commits containing plaintext credentials, private keys, host path leaks, or sensitive `.env` files via the native `secret-leak-sentinel`.
    - Background file-touch tracking and threshold-based auto-compaction on `PostToolUse`.
 
 4. **Anti-Bloat Sentinel**:
-   - Zero emojis in production code, comments, or log strings.
+   - Zero emojis in production code, configs, scripts, comments, or log strings.
    - Elimination of conversational AI chatter in source comments.
-   - Strict prohibition of monolithic single-file dumps (>600 line limit).
+   - Strict prohibition of monolithic single-file dumps (>600 line limit) across code, configs, migrations, and scripts.
 
 5. **Budget-Governed Triple-Tier Memory Engine & Permanent Knowledge Index**:
    - `active-session.md`: 1 KB hard budget for working context (gitignored).
@@ -228,7 +228,7 @@ AGYToolkit/
 │
 ├── automation/                  # Framework CLI, core engines & verification
 │   ├── src/agy_toolkit/         # Core Python package (cli, release, cli_release, mcp_release, knowledge, multi_repo, mcp_multi_repo, cli_workspace, mcp_knowledge, scaffolder, scaffolder_stacks, memory, bus, doctor, linker, mcp, updater)
-│   └── tests/                   # 202 automated unit & verification tests
+│   └── tests/                   # 213 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide
