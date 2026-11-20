@@ -228,7 +228,7 @@ AGYToolkit/
 │
 ├── automation/                  # Framework CLI, core engines & verification
 │   ├── src/agy_toolkit/         # Core Python package (cli, release, cli_release, mcp_release, knowledge, multi_repo, mcp_multi_repo, cli_workspace, mcp_knowledge, scaffolder, scaffolder_stacks, memory, bus, doctor, linker, mcp, updater)
-│   └── tests/                   # 198 automated unit & verification tests
+│   └── tests/                   # 202 automated unit & verification tests
 │
 └── docs/                        # Complete technical framework documentation
     ├── getting_started.md       # Onboarding, installation, and usage guide
@@ -237,6 +237,7 @@ AGYToolkit/
     ├── specialist_agents.md     # In-depth reference for all 15 agents
     ├── skills_catalog.md        # Comprehensive catalog of all 28 skills
     ├── memory_system.md         # Triple-tier memory engine, auto-compact, FTS5 knowledge search & event bus
+    ├── v1_0_architecture_guide.md# 1.0 Master architecture & real-time CDC platform guide
     └── core_tools.md            # AGY tool definitions and parameter reference
 ```
 
@@ -244,6 +245,7 @@ AGYToolkit/
 
 ## Documentation Reference
 
+- [1.0 Master Architecture Guide](docs/v1_0_architecture_guide.md)
 - [Getting Started Guide](docs/getting_started.md)
 - [Native Antigravity MCP Server](docs/mcp_server.md)
 - [Memory System & Auto-Compaction](docs/memory_system.md)
