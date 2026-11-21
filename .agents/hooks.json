@@ -12,6 +12,19 @@
       }
     ]
   },
+  "secret-leak-sentinel": {
+    "PreToolUse": [
+      {
+        "matcher": "run_command",
+        "hooks": [
+          {
+            "command": "powershell -ExecutionPolicy Bypass -File ./hooks/secret-leak-sentinel.ps1",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
   "anti-bloat-sentinel": {
     "PreToolUse": [
       {

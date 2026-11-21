@@ -75,12 +75,12 @@ Operates under the Single Responsibility Principle with strict handoff boundarie
 Organized into 5 engineering tracks: Planning & Architecture, TDD & Implementation, Review & Quality Gates, Git & CI/CD, and Meta-Framework Extensibility.
 
 ### Pillar 3: Deterministic Lifecycle Hooks (`hooks.json`)
-Executes before and after tool calls (`PreToolUse`, `PostToolUse`, `SessionStart`). Hard-blocks direct commits to `main`, unapproved modifications, and failing test runs.
+Executes before and after tool calls (`PreToolUse`, `PostToolUse`, `SessionStart`). Hard-blocks direct commits to `main`, unapproved modifications, failing test runs, and commits containing plaintext secrets, cloud credentials, private keys, host filesystem paths, or sensitive `.env` files via the native `secret-leak-sentinel`.
 
 ### Pillar 4: Anti-Bloat Sentinel
-- Zero emojis in production code, comments, logs, and commit messages.
+- Zero emojis in production code, configs, scripts, comments, logs, and commit messages.
 - Elimination of conversational AI chatter in source comments.
-- Strict file line cap (<600 lines per file).
+- Strict file line cap (<600 lines per file) enforced across code, configs, migrations, and scripts.
 
 ### Pillar 5: Budget-Governed Triple-Tier Memory Engine & SQLite FTS5 Index
 - Tier 1: `active-session.md` (1 KB hard budget for working context).

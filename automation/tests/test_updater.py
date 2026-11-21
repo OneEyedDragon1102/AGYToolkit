@@ -58,7 +58,7 @@ class TestUpdater(unittest.TestCase):
         self.assertTrue(report.success)
         self.assertEqual(report.skills_updated, 28)
         self.assertEqual(report.agents_updated, 15)
-        self.assertEqual(report.hooks_updated, 10)
+        self.assertEqual(report.hooks_updated, 12)
 
         # Verify restored
         self.assertNotEqual(skill_file.read_text(encoding="utf-8"), "CORRUPTED SKILL CONTENT")

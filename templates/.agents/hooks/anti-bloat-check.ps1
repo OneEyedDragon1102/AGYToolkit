@@ -20,7 +20,7 @@ try {
 
         if ($path -and $content) {
             $ext = [System.IO.Path]::GetExtension($path).ToLower()
-            $codeExtensions = @(".java", ".ts", ".js", ".py", ".go", ".rs", ".cpp", ".c", ".cs")
+            $codeExtensions = @(".java", ".ts", ".js", ".py", ".go", ".rs", ".cpp", ".c", ".cs", ".json", ".yml", ".yaml", ".sql", ".sh", ".ps1", ".toml", ".properties")
 
             # Check for non-markdown code files
             if ($codeExtensions -contains $ext) {

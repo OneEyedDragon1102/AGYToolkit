@@ -21,7 +21,7 @@ try:
         path = args.get('Path', '')
         content = args.get('Content', '') if tool == 'write_file' else args.get('Replacement', '')
         ext = os.path.splitext(path)[1].lower()
-        code_exts = {'.java', '.ts', '.js', '.py', '.go', '.rs', '.cpp', '.c', '.cs'}
+        code_exts = {'.java', '.ts', '.js', '.py', '.go', '.rs', '.cpp', '.c', '.cs', '.json', '.yml', '.yaml', '.sql', '.sh', '.ps1', '.toml', '.properties'}
 
         if ext in code_exts and content:
             emoji_regex = re.compile(r'[\U00010000-\U0010ffff\u2600-\u26ff\u2700-\u27bf]')
